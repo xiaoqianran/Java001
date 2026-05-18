@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+    <!-- 引入 Spring Boot 默认的 logback 配置 -->
+    <include resource="org/springframework/boot/logging/logback/defaults.xml"/>
+
+    <!-- ================================================================= -->
+    <!-- demo016 - 统一日志格式（生产级推荐） -->
+    <!-- ================================================================= -->
+    <!--
+        关键设计：
+        1. 使用 %X{traceId} 输出 MDC 中的 traceId
+        2. 控制台彩色输出（开发友好）
+        3. 日期 + 线程 + 日志级别 + [traceId] + 类名 + 消息
+        4. 生产环境可轻松切换到 JSON 格式或 ELK
+    -->
+
+    <!-- 控制台日志（开发环境主要使用） -->
+    <appender name="CONSOLE" class="ch.qos.logback.core.ConsoleAppender">
+        <encoder>
+            <!--
+                格式说明：
+                %d{yyyy-MM-dd HH:mm:ss.SSS} 时间
+                [%thread] 线程名
+                %-5level 日志级别左对齐
+                [traceId: %X{traceId}]  核心！请求链路ID
+                %logger{36}  类名（最长36字符）
+                %msg 消息
+                %n 换行
+            -->
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId: %X{traceId}] %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 可选：文件日志（生产环境建议开启） -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/mall-student.log</file>
+        <rollingPolicy class="ch.qos.logback.core.rolling.TimeBasedRollingPolicy">
+            <fileNamePattern>logs/mall-student.%d{yyyy-MM-dd}.%i.log.gz</fileNamePattern>
+            <maxHistory>30</maxHistory>
+            <maxFileSize>100MB</maxFileSize>
+        </rollingPolicy>
+        <encoder>
+            <pattern>%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level [traceId: %X{traceId}] %logger{36} - %msg%n</pattern>
+            <charset>UTF-8</charset>
+        </encoder>
+    </appender>
+
+    <!-- 根日志级别 -->
+    <root level="INFO">
+        <appender-ref ref="CONSOLE"/>
+        <!-- 生产环境建议同时开启 FILE -->
+        <!-- <appender-ref ref="FILE"/> -->
+    </root>
+
+    <!-- 针对我们自己项目的 DEBUG 日志（方便看 SQL） -->
+    <logger name="com.demo017.student" level="DEBUG"/>
+    <logger name="com.demo017.student.mapper" level="DEBUG"/>
+
+    <!-- MyBatis-Plus SQL 美化（可选） -->
+    <logger name="com.baomidou.mybatisplus" level="DEBUG"/>
+
+</configuration>

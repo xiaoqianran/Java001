@@ -1,0 +1,57 @@
+# ============================================================
+# demo018 - JWT + Spring Security 认证
+# ============================================================
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  # ==================== 数据源 ====================
+  datasource:
+    url: jdbc:mysql://localhost:3306/student_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # ==================== Redis（demo017 保留） ====================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 0
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+
+  # ==================== Spring Cache ====================
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: true
+
+# ==================== MyBatis-Plus ====================
+mybatis-plus:
+  type-aliases-package: com.demo018.student.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# ==================== JWT 配置（demo018 新增） ====================
+jwt:
+  secret: demo018-student-jwt-secret-key-2026
+  expiration: 86400000   # 24小时
+
+# ==================== 日志 ====================
+logging:
+  level:
+    com.demo018.student: DEBUG
+    com.demo018.student.mapper: DEBUG
+    org.springframework.web: INFO

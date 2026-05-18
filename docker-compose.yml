@@ -1,0 +1,75 @@
+# ============================================================
+# 学生管理系统教学项目 - Docker Compose (demo016 ~ demo020 阶段)
+# ============================================================
+# 使用方式：
+#   docker compose up -d          # 后台启动
+#   docker compose down           # 停止并删除容器
+#   docker compose down -v        # 彻底删除数据卷（慎用）
+#
+# 启动后：
+#   MySQL: localhost:3306  (root/123456 / student_db)
+#   Redis: localhost:6379
+#
+# Spring Boot 应用（mvn spring-boot:run）可直接连接 localhost
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ==================== MySQL 8.0 ====================
+  mysql:
+    image: mysql:8.0
+    container_name: student-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: student_db
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      # 自动执行初始化脚本（非常实用）
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - student-net
+
+  # ==================== Redis（为 demo017 缓存做准备） ====================
+  redis:
+    image: redis:7-alpine
+    container_name: student-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass 123456
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - student-net
+
+volumes:
+  mysql_data:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  student-net:
+    driver: bridge

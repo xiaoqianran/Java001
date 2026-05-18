@@ -1,18 +1,16 @@
 package com.mall.module.auth.controller;
 
-import com.mall.common.exception.BusinessException;
 import com.mall.common.result.Result;
-import com.mall.common.security.JwtUtil;
 import com.mall.common.security.SecurityUtils;
 import com.mall.module.auth.dto.UserLoginDTO;
+import com.mall.module.user.dto.UserRegisterDTO;
+import com.mall.module.auth.service.AuthService;
 import com.mall.module.auth.vo.LoginVO;
 import com.mall.module.user.entity.User;
-import com.mall.module.user.service.UserService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -21,17 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * =====================================================================
- * 【mall - Phase 1 Step 3 + Step 4 + Step 5】认证控制器
+ * 【mall - Phase 1 认证重构】认证控制器（优化版）
  * =====================================================================
  *
- * 承载了三个步骤的核心对外能力：
- * - Step 3：登录并签发 JWT（/login）
- * - Step 4：演示受保护接口 + 获取当前登录用户（/me）
- * - Step 5：演示方法级权限控制（/admin-only + @PreAuthorize）
+ * 本次重构核心变化（对应 A 选项）：
+ * - 注册接口迁移：从 `/api/user/register` → `/api/auth/register`
+ * - 引入 AuthService，解耦业务逻辑
+ * - `/me` 接口返回完整的 `LoginUser` 对象
  *
- * 教学重点：
- * - 如何使用 @PreAuthorize 进行细粒度权限控制
- * - 开启 @EnableMethodSecurity 后的效果
+ * 领域划分更清晰：Auth（认证）作为一个独立模块。
  * =====================================================================
  */
 @RestController
@@ -39,39 +35,23 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 public class AuthController {
 
-    private final UserService userService;
-    private final PasswordEncoder passwordEncoder;
-    private final JwtUtil jwtUtil;
+    private final AuthService authService;
+
+    /**
+     * 用户注册（已从 /api/user/register 迁移至此处）
+     */
+    @PostMapping("/register")
+    public Result<User> register(@Valid @RequestBody UserRegisterDTO dto) {
+        User user = authService.register(dto);
+        return Result.success("注册成功", user);
+    }
 
     /**
      * 用户登录
-     * 成功后返回 JWT Token，客户端后续请求需在 Header 中携带
      */
     @PostMapping("/login")
     public Result<LoginVO> login(@Valid @RequestBody UserLoginDTO dto) {
-        // 1. 根据用户名查询用户（只查状态正常的）
-        User user = userService.getUserByUsername(dto.getUsername());
-        if (user == null) {
-            throw new BusinessException(401, "用户名或密码错误");
-        }
-
-        // 2. 使用 BCrypt 校验密码（注意：绝不能把明文密码和数据库比对）
-        if (!passwordEncoder.matches(dto.getPassword(), user.getPassword())) {
-            throw new BusinessException(401, "用户名或密码错误");
-        }
-
-        // 3. 【核心】生成 JWT Token，把用户关键信息（id、username、role）放进去
-        String token = jwtUtil.generateToken(user.getId(), user.getUsername(), user.getRole());
-
-        // 4. 组装返回结果（不返回密码等敏感信息）
-        LoginVO vo = LoginVO.builder()
-                .token(token)
-                .userId(user.getId())
-                .username(user.getUsername())
-                .nickname(user.getNickname())
-                .role(user.getRole())
-                .build();
-
+        LoginVO vo = authService.login(dto);
         return Result.success("登录成功", vo);
     }
 
@@ -86,14 +66,14 @@ public class AuthController {
      */
     @GetMapping("/me")
     public Result<Object> me(HttpServletRequest request) {
-        // 从 SecurityContext 获取用户名（由 Filter 注入）
-        String username = SecurityUtils.getCurrentUsername();
+        // 【Phase 1 Step 5 优化】使用增强后的 SecurityUtils 获取完整 LoginUser 信息
+        var loginUser = SecurityUtils.getCurrentUser(request);
 
-        // 从 request attribute 获取更完整的身份信息（Filter 额外放入的）
-        Long userId = (Long) request.getAttribute("currentUserId");
-        Integer role = (Integer) request.getAttribute("currentUserRole");
+        if (loginUser == null) {
+            return Result.error(401, "未登录或 Token 无效");
+        }
 
-        return Result.success("当前用户信息", new MeVO(userId, username, role));
+        return Result.success("当前用户信息", loginUser);
     }
 
     // 使用 Java 14+ record 快速定义返回 VO（教学中可以演示现代 Java 写法）

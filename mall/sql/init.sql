@@ -62,3 +62,22 @@ INSERT INTO product_category (parent_id, name, level, sort) VALUES
 (0, '家用电器', 1, 3);
 
 SELECT 'product_category 表创建完成（Phase 2 Step 1）' AS message;
+
+-- ============================================================
+-- Phase 2 Step 3: SPU（标准产品单元）表
+-- ============================================================
+DROP TABLE IF EXISTS product_spu;
+CREATE TABLE product_spu (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'SPU ID',
+    category_id   BIGINT       NOT NULL             COMMENT '所属分类ID',
+    name          VARCHAR(200) NOT NULL             COMMENT '商品名称',
+    description   TEXT                              COMMENT '商品描述',
+    brand         VARCHAR(100)                      COMMENT '品牌',
+    status        TINYINT      DEFAULT 1            COMMENT '状态：0=下架，1=上架',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0            COMMENT '逻辑删除',
+    INDEX idx_category_id (category_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='SPU 标准产品单元表（商品基本信息）';
+
+SELECT 'product_spu 表创建完成（Phase 2 Step 3）' AS message;

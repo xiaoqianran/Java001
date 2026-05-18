@@ -1,20 +1,24 @@
 package com.mall.module.user.controller;
 
 import com.mall.common.result.Result;
-import com.mall.module.user.dto.UserRegisterDTO;
 import com.mall.module.user.entity.User;
 import com.mall.module.user.service.UserService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 /**
- * 用户控制器
+ * =====================================================================
+ * 【mall - Phase 1 后续优化】用户管理控制器（已迁移注册功能）
+ * =====================================================================
  *
- * Phase 1 Step 2：用户注册接口
+ * 注意：
+ * 用户注册功能已迁移至 /api/auth/register（更符合领域划分）。
+ * 此 Controller 目前仅保留用户管理相关接口（未来扩展）。
+ * =====================================================================
  */
 @RestController
 @RequestMapping("/api/user")
@@ -24,11 +28,10 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 用户注册
+     * 临时调试接口：查看所有用户（仅开发环境使用）
      */
-    @PostMapping("/register")
-    public Result<User> register(@Valid @RequestBody UserRegisterDTO dto) {
-        User registeredUser = userService.register(dto);
-        return Result.success("注册成功", registeredUser);
+    @GetMapping("/list")
+    public Result<List<User>> listAll() {
+        return Result.success(userService.list());
     }
 }

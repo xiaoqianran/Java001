@@ -81,3 +81,23 @@ CREATE TABLE product_spu (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='SPU 标准产品单元表（商品基本信息）';
 
 SELECT 'product_spu 表创建完成（Phase 2 Step 3）' AS message;
+
+-- ============================================================
+-- Phase 2 Step 4: SKU（库存量单位）表
+-- ============================================================
+DROP TABLE IF EXISTS product_sku;
+CREATE TABLE product_sku (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT 'SKU ID',
+    spu_id        BIGINT       NOT NULL             COMMENT '关联的 SPU ID',
+    sku_code      VARCHAR(100) NOT NULL UNIQUE      COMMENT 'SKU 编码（唯一）',
+    price         DECIMAL(10,2) NOT NULL            COMMENT '售价',
+    stock         INT          NOT NULL DEFAULT 0   COMMENT '库存数量',
+    specs         JSON                              COMMENT '规格属性（JSON格式，如 {"颜色":"黑色","内存":"128G"}）',
+    status        TINYINT      DEFAULT 1            COMMENT '状态：0=禁用，1=启用',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0            COMMENT '逻辑删除',
+    INDEX idx_spu_id (spu_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='SKU 库存量单位表';
+
+SELECT 'product_sku 表创建完成（Phase 2 Step 4）' AS message;

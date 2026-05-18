@@ -104,3 +104,19 @@ CREATE TABLE product_sku (
 ALTER TABLE product_sku ADD COLUMN version INT DEFAULT 0 COMMENT '乐观锁版本号' AFTER stock;
 
 SELECT 'product_sku 表创建完成（Phase 2 Step 4）' AS message;
+
+-- ============================================================
+-- Phase 3 Step 1: 购物车表
+-- ============================================================
+DROP TABLE IF EXISTS cart;
+CREATE TABLE cart (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '购物车ID',
+    user_id       BIGINT NOT NULL                COMMENT '用户ID',
+    sku_id        BIGINT NOT NULL                COMMENT 'SKU ID',
+    quantity      INT NOT NULL DEFAULT 1         COMMENT '商品数量',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    UNIQUE KEY uk_user_sku (user_id, sku_id)     COMMENT '同一个用户+SKU只能有一条记录'
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
+
+SELECT 'cart 表创建完成（Phase 3 Step 1）' AS message;

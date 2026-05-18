@@ -1,0 +1,92 @@
+# ============================================================
+# demo019 - Docker 一键部署（支持本地 + Docker 环境）
+# ============================================================
+# 说明：
+# - 本地开发：使用 localhost 连接 MySQL/Redis
+# - Docker 运行：通过环境变量覆盖（docker-compose 已配置）
+# ============================================================
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  # ==================== 数据源（Docker 优化） ====================
+  datasource:
+    url: jdbc:mysql://localhost:3306/student_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      maximum-pool-size: 10
+      minimum-idle: 2
+      validation-timeout: 5000
+      # 重要：在 Docker 启动时等待 DB 就绪
+      initialization-fail-timeout: 60000
+
+  # ==================== Redis（demo017 保留） ====================
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: 123456
+      database: 0
+      lettuce:
+        pool:
+          max-active: 10
+          max-idle: 5
+          min-idle: 1
+
+  # ==================== Spring Cache ====================
+  cache:
+    type: redis
+    redis:
+      time-to-live: 3600000
+      cache-null-values: true
+
+# ==================== MyBatis-Plus ====================
+mybatis-plus:
+  type-aliases-package: com.demo020.student.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# ==================== JWT 配置（demo019 新增） ====================
+jwt:
+  secret: demo019-production-secret-key-change-me
+  expiration: 86400000   # 24小时
+
+# ==================== Actuator（Docker 健康检查 + 探针） ====================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    db:
+      enabled: true
+    defaults:
+      enabled: true
+  # 推荐做法：把 liveness 和 readiness 分开
+  # liveness 简单检查进程是否存活
+  # readiness 检查 DB、Redis 是否就绪
+  server:
+    port: 8080
+
+# ==================== 日志 ====================
+logging:
+  level:
+    com.demo020.student: DEBUG
+    com.demo020.student.mapper: DEBUG
+    org.springframework.web: INFO

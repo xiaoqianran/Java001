@@ -12,13 +12,19 @@ import java.util.List;
 
 /**
  * =====================================================================
- * 【mall - Phase 2 Step 4】SKU Service 实现
+ * 【mall - Phase 2 Step 4 完善】SKU 库存管理实现（引入乐观锁）
  * =====================================================================
  *
+ * 本次核心改进：
+ * - 使用 MyBatis-Plus 的 @Version 实现乐观锁
+ * - 防止高并发下库存超卖问题
+ *
  * 教学重点：
- * - 库存扣减必须加事务（@Transactional）
- * - 简单乐观锁思路（当前用 stock >= quantity 校验）
- * - 后续可升级为数据库行锁或 Redis 分布式锁
+ * - 为什么简单的 `stock = stock - n` 在并发场景下危险？
+ * - 乐观锁的工作原理（版本号对比）
+ * - MyBatis-Plus 如何自动处理 version 字段
+ *
+ * 注意：当前实现仍属于“应用层乐观锁”，生产环境高并发时建议结合 Redis + Lua 或数据库行锁。
  * =====================================================================
  */
 @Service
@@ -34,19 +40,32 @@ public class SkuServiceImpl extends ServiceImpl<SkuMapper, Sku> implements SkuSe
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean deductStock(Long skuId, Integer quantity) {
+    public boolean reduceStock(Long skuId, Integer quantity) {
         Sku sku = getById(skuId);
-        if (sku == null || sku.getStock() < quantity) {
+        if (sku == null) {
+            throw new BusinessException("SKU 不存在");
+        }
+        if (sku.getStock() < quantity) {
             throw new BusinessException("库存不足");
         }
 
+        // 使用乐观锁更新（MyBatis-Plus 会自动根据 version 条件更新）
         sku.setStock(sku.getStock() - quantity);
-        return updateById(sku);
+
+        // updateById 会自动带上 version 条件：WHERE id = ? AND version = ?
+        boolean success = updateById(sku);
+
+        if (!success) {
+            // 说明 version 不匹配，即并发冲突
+            throw new BusinessException("库存扣减失败，请重试");
+        }
+
+        return true;
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public boolean addStock(Long skuId, Integer quantity) {
+    public boolean restoreStock(Long skuId, Integer quantity) {
         Sku sku = getById(skuId);
         if (sku == null) {
             throw new BusinessException("SKU 不存在");

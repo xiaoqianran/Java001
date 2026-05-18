@@ -26,12 +26,13 @@ public interface SkuService extends IService<Sku> {
     List<Sku> listBySpuId(Long spuId);
 
     /**
-     * 扣减库存（用于下单）
+     * 安全扣减库存（使用乐观锁）
+     * 推荐在订单模块调用此方法
      */
-    boolean deductStock(Long skuId, Integer quantity);
+    boolean reduceStock(Long skuId, Integer quantity);
 
     /**
-     * 回补库存（用于取消订单）
+     * 回补库存（用于取消订单等场景）
      */
-    boolean addStock(Long skuId, Integer quantity);
+    boolean restoreStock(Long skuId, Integer quantity);
 }

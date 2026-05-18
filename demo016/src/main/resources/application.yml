@@ -1,0 +1,45 @@
+# ============================================================
+# demo016 - 统一日志 + 请求响应日志
+# ============================================================
+# 说明：
+# - 日志格式由 logback-spring.xml 完全控制（推荐做法）
+# - MDC traceId 已在 LoggingInterceptor 中自动注入
+# - 实际生产可把 logging.level 调成 INFO，并开启文件输出
+# ============================================================
+
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/student_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+mybatis-plus:
+  type-aliases-package: com.demo016.student.entity
+  configuration:
+    map-underscore-to-camel-case: true
+  global-config:
+    db-config:
+      id-type: auto
+
+# Redis 配置（demo017 开始正式使用，当前先注释）
+# spring:
+#   data:
+#     redis:
+#       host: localhost
+#       port: 6379
+#       password: 123456
+#       database: 0
+
+logging:
+  level:
+    com.demo016.student: DEBUG
+    com.demo016.student.mapper: DEBUG
+    # 生产环境建议把上面两项改成 INFO，并依赖 logback-spring.xml 的 FILE appender
+  # 关闭 Spring 框架过多 debug 日志（保持控制台干净）
+  level.org.springframework.web: INFO

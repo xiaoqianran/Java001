@@ -59,10 +59,11 @@ public class SkuController {
 
     /**
      * 扣减库存（测试接口，实际应在订单服务调用）
+     * 使用乐观锁保护
      */
-    @PostMapping("/{id}/deduct")
-    public Result<Boolean> deductStock(@PathVariable Long id, @RequestParam Integer quantity) {
-        boolean success = skuService.deductStock(id, quantity);
+    @PostMapping("/{id}/reduce")
+    public Result<Boolean> reduceStock(@PathVariable Long id, @RequestParam Integer quantity) {
+        boolean success = skuService.reduceStock(id, quantity);
         return success ? Result.success(true) : Result.error("扣减失败");
     }
 

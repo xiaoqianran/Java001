@@ -100,4 +100,7 @@ CREATE TABLE product_sku (
     INDEX idx_spu_id (spu_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='SKU 库存量单位表';
 
+-- 补充：为 SKU 表增加乐观锁 version 字段（Phase 2 Step 4 完善）
+ALTER TABLE product_sku ADD COLUMN version INT DEFAULT 0 COMMENT '乐观锁版本号' AFTER stock;
+
 SELECT 'product_sku 表创建完成（Phase 2 Step 4）' AS message;

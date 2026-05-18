@@ -50,6 +50,13 @@ public class Sku {
     private Integer stock;
 
     /**
+     * 乐观锁版本号
+     * MyBatis-Plus 会自动在更新时 +1，用于防止并发扣库存时的数据不一致
+     */
+    @Version
+    private Integer version;
+
+    /**
      * 规格属性（JSON 格式）
      * 示例：{"颜色": "黑色", "内存": "128G"}
      */

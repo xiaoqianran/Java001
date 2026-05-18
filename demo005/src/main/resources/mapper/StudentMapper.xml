@@ -1,0 +1,59 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "https://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!--
+    =====================================================================
+    【demo005 核心文件】StudentMapper.xml
+    =====================================================================
+
+    这是 MyBatis 教学里最重要的一步：
+
+    - 以前所有 SQL 都写在 Java 代码里（StudentMapperImpl.java 有 100+ 行 JDBC）
+    - 现在 SQL 全部写在 XML 里，由 MyBatis 负责执行和结果映射
+
+    教学要点：
+    1. <select> <insert> <update> <delete> 对应 CRUD
+    2. parameterType / resultType
+    3. #{ } 占位符（MyBatis 会自动处理预编译，防注入）
+    4. id 必须和 StudentMapper 接口里的方法名完全一致
+    =====================================================================
+-->
+<mapper namespace="com.demo005.student.mapper.StudentMapper">
+
+    <!-- 新增学生 -->
+    <insert id="insert" parameterType="com.demo005.student.entity.Student">
+        INSERT INTO t_student(name, age, gender, email, phone)
+        VALUES (#{name}, #{age}, #{gender}, #{email}, #{phone})
+    </insert>
+
+    <!-- 根据 ID 查询单个学生 -->
+    <select id="selectById" parameterType="java.lang.Long" resultType="com.demo005.student.entity.Student">
+        SELECT id, name, age, gender, email, phone, create_time, update_time
+        FROM t_student
+        WHERE id = #{id}
+    </select>
+
+    <!-- 查询所有学生 -->
+    <select id="selectAll" resultType="com.demo005.student.entity.Student">
+        SELECT id, name, age, gender, email, phone, create_time, update_time
+        FROM t_student
+        ORDER BY id
+    </select>
+
+    <!-- 更新学生 -->
+    <update id="update" parameterType="com.demo005.student.entity.Student">
+        UPDATE t_student
+        SET name   = #{name},
+            age    = #{age},
+            gender = #{gender},
+            email  = #{email},
+            phone  = #{phone}
+        WHERE id = #{id}
+    </update>
+
+    <!-- 删除学生 -->
+    <delete id="deleteById" parameterType="java.lang.Long">
+        DELETE FROM t_student WHERE id = #{id}
+    </delete>
+
+</mapper>

@@ -1,0 +1,100 @@
+# ============================================================
+# demo019 - Docker Compose 一键部署配置
+# ============================================================
+# 使用方式：
+#   docker compose up -d --build          # 构建并启动
+#   docker compose logs -f app            # 查看应用日志
+#   docker compose down                   # 停止
+#   docker compose down -v                # 停止并删除数据卷
+# ============================================================
+
+services:
+  # ==================== 应用服务 ====================
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: student-app
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      # 覆盖 Spring 配置，使用 Docker 内部服务名
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/student_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: 123456
+
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      SPRING_DATA_REDIS_PASSWORD: 123456
+
+      # JWT 配置（生产建议从环境变量或配置中心读取）
+      JWT_SECRET: demo019-production-secret-key-change-me
+      JWT_EXPIRATION: 86400000
+
+      # 日志级别
+      LOGGING_LEVEL_COM_DEMO019: INFO
+
+      # 显式开启探针（Spring Boot 3 推荐）
+      MANAGEMENT_ENDPOINT_HEALTH_PROBES_ENABLED: "true"
+      MANAGEMENT_HEALTH_DB_ENABLED: "true"
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks:
+      - student-network
+    healthcheck:
+      # 使用 readiness 探针（更准确）
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/actuator/health/readiness"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 120s   # 给应用 + DB 初始化足够时间（很重要！）
+
+  # ==================== MySQL ====================
+  mysql:
+    image: mysql:8.0
+    container_name: student-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: student_db
+      TZ: Asia/Shanghai
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - student-network
+
+  # ==================== Redis ====================
+  redis:
+    image: redis:7-alpine
+    container_name: student-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes --requirepass 123456
+    networks:
+      - student-network
+
+volumes:
+  mysql_data:
+  redis_data:
+
+networks:
+  student-network:
+    driver: bridge

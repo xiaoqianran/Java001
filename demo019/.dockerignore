@@ -1,0 +1,14 @@
+# ============================================================
+# Docker 构建忽略文件
+# ============================================================
+target/
+.git/
+.idea/
+*.iml
+*.log
+docker-compose*.yml
+Dockerfile
+README.md
+.gitignore
+*.md
+!README.md  # 保留根 README 如果需要

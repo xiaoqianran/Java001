@@ -35,3 +35,30 @@ INSERT INTO sys_user (username, password, nickname, real_name, role, status) VAL
 ('admin', '$2a$10$N.zmdr9k7uOCQb376NoUnuTJ8iAt6Z5EHsM8lE9lBOsl7iKTVKIUi', '系统管理员', '管理员', 1, 1);
 
 SELECT 'sys_user 表创建完成（Phase 1 Step 1）' AS message;
+
+-- ============================================================
+-- Phase 2 Step 1: 商品分类表（product_category）
+-- ============================================================
+DROP TABLE IF EXISTS product_category;
+CREATE TABLE product_category (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '分类ID',
+    parent_id     BIGINT       NOT NULL DEFAULT 0   COMMENT '父分类ID，0表示顶级分类',
+    name          VARCHAR(50)  NOT NULL             COMMENT '分类名称',
+    level         TINYINT      NOT NULL DEFAULT 1   COMMENT '分类层级：1一级，2二级，3三级',
+    sort          INT          DEFAULT 0            COMMENT '排序字段',
+    icon          VARCHAR(255)                      COMMENT '分类图标URL',
+    description   VARCHAR(500)                      COMMENT '分类描述',
+    status        TINYINT      DEFAULT 1            COMMENT '状态：0=禁用，1=启用',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0            COMMENT '逻辑删除',
+    INDEX idx_parent_id (parent_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='商品分类表';
+
+-- 示例数据
+INSERT INTO product_category (parent_id, name, level, sort) VALUES
+(0, '手机数码', 1, 1),
+(0, '电脑办公', 1, 2),
+(0, '家用电器', 1, 3);
+
+SELECT 'product_category 表创建完成（Phase 2 Step 1）' AS message;

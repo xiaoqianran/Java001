@@ -1,0 +1,26 @@
+# ============================================================
+# demo008 - Spring Boot + MyBatis 配置
+# ============================================================
+
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/student_db?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&useSSL=false
+    username: root
+    password: 123456
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+# MyBatis 配置（mybatis-spring-boot-starter 自动接管）
+mybatis:
+  # 实体类包别名（可选，但推荐）
+  type-aliases-package: com.demo008.student.entity
+  # Mapper XML 位置（如果有的话）
+  # mapper-locations: classpath:mapper/*.xml
+  # 开启驼峰命名自动映射（create_time -> createTime）
+  configuration:
+    map-underscore-to-camel-case: true
+
+# 日志级别（方便观察 SQL）
+logging:
+  level:
+    com.demo008.student.mapper: DEBUG   # 打印 MyBatis 执行的 SQL
+    root: INFO

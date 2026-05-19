@@ -67,6 +67,14 @@ mall:
   # 未来可在此扩展各种业务开关
   env: local
 
+  order:
+    # 待支付订单超时时间（分钟）
+    timeout-minutes: 30
+    # 超时扫描频率（毫秒）
+    timeout-scan-fixed-rate-ms: 60000
+    # 每次扫描最多处理的数量
+    timeout-batch-size: 100
+
 # ==================== JWT 配置（Phase 1 Step 3 引入） ====================
 jwt:
   secret: mall-secret-key-change-in-production-2026

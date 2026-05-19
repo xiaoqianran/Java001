@@ -427,18 +427,9 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 
 ---
 
-## 11. 订单状态机说明（Phase 8）
+## 11. 支付接口（Phase 9 新增）
 
-本阶段在 Phase 7 基础上增加超时自动取消机制：
-
-- **10（待支付）→ 50（已取消）**：支持用户主动取消（Phase 5） + 系统超时自动取消（Phase 8）
-- 超时取消由后台定时任务触发，自动恢复库存
-- 完整状态机 + 并发安全设计详见 [Phase8.md](./Phase8.md)
-
----
-
-**文档生成时间**：2026-05-19  
-### 创建支付单（Phase 9 新增）
+### 创建支付单
 `POST /api/payment/order/{orderId}`
 
 **业务规则**：
@@ -463,7 +454,7 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 }
 ```
 
-### 模拟支付回调（Phase 9 新增）
+### 模拟支付回调
 `POST /api/payment/mock-callback`
 
 **说明**：
@@ -483,5 +474,21 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 }
 ```
 
+---
+
+## 12. 订单与支付状态机说明（Phase 9）
+
+本阶段重点通过**支付回调**驱动订单状态流转：
+
+- **10（待支付）→ 20（已支付）**：推荐通过 `POST /api/payment/order/{orderId}` + `POST /api/payment/mock-callback` 完成（Phase 9）
+- 旧接口 `PUT /api/order/{id}/pay`（Phase 6 简单模拟）保留但不推荐使用
+- **10（待支付）→ 50（已取消）**：支持用户主动取消 + 系统超时自动取消（Phase 5/8）
+- 超时取消与支付回调通过条件更新竞争，保证一致性
+
+完整状态机设计、支付幂等、回调事务边界详见 [Phase9.md](./Phase9.md)。
+
+---
+
+**文档生成时间**：2026-05-19  
 **验证状态**：demo027_mall Phase 9 模拟第三方支付回调与支付幂等已完成，mvn package 通过，文档已自洽。
 本阶段新增支付模块 + 支付单表 + 模拟支付回调流程，强调幂等性与事务边界。

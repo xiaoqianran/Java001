@@ -51,7 +51,7 @@
 ## 快速启动
 
 ```bash
-cd demo025_mall
+cd demo027_mall
 docker compose up -d
 mvn clean spring-boot:run
 ```
@@ -96,4 +96,4 @@ mvn clean spring-boot:run
 
 **demo027_mall Phase 9 模拟第三方支付回调与支付幂等已完成。**
 
-下一步建议：支付回调模拟、真实物流单、退款流程、引入 Redis 等（后续版本择一推进）。
+下一步建议：退款流程、真实物流单、Redis 幂等锁、真实支付签名验签（后续版本择一推进）。

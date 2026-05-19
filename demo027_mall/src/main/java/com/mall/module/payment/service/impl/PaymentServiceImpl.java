@@ -1,14 +1,12 @@
 package com.mall.module.payment.service.impl;
 
 import com.mall.common.exception.BusinessException;
-import com.mall.common.security.LoginUser;
 import com.mall.module.order.entity.Order;
 import com.mall.module.order.enums.OrderStatus;
 import com.mall.module.order.mapper.OrderMapper;
 import com.mall.module.payment.dto.MockPaymentCallbackDTO;
 import com.mall.module.payment.entity.PaymentOrder;
 import com.mall.module.payment.enums.PaymentStatus;
-import com.mall.module.order.mapper.OrderMapper;
 import com.mall.module.payment.mapper.PaymentOrderMapper;
 import com.mall.module.payment.service.PaymentService;
 import com.mall.module.payment.vo.PaymentOrderVO;
@@ -20,8 +18,6 @@ import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
 
 import java.time.LocalDateTime;
 
@@ -40,6 +36,7 @@ public class PaymentServiceImpl implements PaymentService {
     private String mockCallbackSecret;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public PaymentOrderVO createPaymentForOrder(Long userId, Long orderId) {
         // 1. 查询订单
         Order order = orderMapper.selectById(orderId);
@@ -69,7 +66,7 @@ public class PaymentServiceImpl implements PaymentService {
             return convertToVO(existing);
         }
 
-        // 4. 创建新支付单
+        // 4. 创建新支付单（并发幂等保护）
         PaymentOrder payment = new PaymentOrder();
         payment.setPaymentNo(generatePaymentNo());
         payment.setOrderId(orderId);
@@ -79,7 +76,19 @@ public class PaymentServiceImpl implements PaymentService {
         payment.setChannel("MOCK");
         payment.setStatus(PaymentStatus.PENDING.getCode());
 
-        paymentOrderMapper.insert(payment);
+        try {
+            paymentOrderMapper.insert(payment);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            // 并发创建时，另一个请求已经成功插入，重新查询返回
+            PaymentOrder existingPayment = paymentOrderMapper.selectOne(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PaymentOrder>()
+                            .eq(PaymentOrder::getOrderId, orderId)
+            );
+            if (existingPayment != null) {
+                return convertToVO(existingPayment);
+            }
+            throw new BusinessException("创建支付单失败，请重试");
+        }
 
         return convertToVO(payment);
     }
@@ -106,8 +115,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 3. 校验金额
         if (dto.getPaidAmount() == null || dto.getPaidAmount().compareTo(payment.getAmount()) != 0) {
-            payment.setStatus(PaymentStatus.FAILED.getCode());
-            paymentOrderMapper.updateById(payment);
+            recordPaymentFailure(payment, "支付金额不匹配");
             throw new BusinessException("支付金额不匹配");
         }
 
@@ -126,8 +134,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 6. 订单状态校验
         if (order.getStatus() == OrderStatus.CANCELLED.getCode()) {
-            payment.setStatus(PaymentStatus.FAILED.getCode());
-            paymentOrderMapper.updateById(payment);
+            recordPaymentFailure(payment, "订单已取消");
             throw new BusinessException("订单已取消，不能支付");
         }
 
@@ -163,10 +170,19 @@ public class PaymentServiceImpl implements PaymentService {
             log.info("支付回调处理成功, paymentNo={}, orderId={}", dto.getPaymentNo(), order.getId());
 
         } else {
-            // 支付失败
-            payment.setStatus(PaymentStatus.FAILED.getCode());
-            paymentOrderMapper.updateById(payment);
+            // 支付失败（不落库，由调用方决定）
+            // 这里我们只记录日志，不强制落库
         }
+    }
+
+    /**
+     * 在独立事务中记录支付失败状态（确保即使外层事务回滚，FAILED 状态也能落库）
+     */
+    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
+    public void recordPaymentFailure(PaymentOrder payment, String reason) {
+        payment.setStatus(PaymentStatus.FAILED.getCode());
+        paymentOrderMapper.updateById(payment);
+        log.warn("支付单标记为失败, paymentNo={}, reason={}", payment.getPaymentNo(), reason);
     }
 
     private String generatePaymentNo() {

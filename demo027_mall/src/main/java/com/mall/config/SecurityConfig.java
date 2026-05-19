@@ -55,7 +55,8 @@ public class SecurityConfig {
                     "/api/auth/login",
                     "/api/auth/register",
                     "/actuator/**",
-                    "/error"
+                    "/error",
+                    "/api/payment/mock-callback"
                 ).permitAll()
 
                 // 其余所有接口必须经过认证（即必须带合法 Token）

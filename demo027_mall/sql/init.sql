@@ -155,3 +155,26 @@ CREATE TABLE order_item (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表（Phase 4）';
 
 SELECT 'order & order_item 表创建完成（Phase 4 - demo022_mall 实现，demo023_mall 继承）' AS message;
+
+-- Phase 9: 支付单表（模拟第三方支付）
+DROP TABLE IF EXISTS payment_order;
+CREATE TABLE payment_order (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    payment_no    VARCHAR(64)  NOT NULL UNIQUE COMMENT '支付单号',
+    order_id      BIGINT       NOT NULL COMMENT '订单ID',
+    order_no      VARCHAR(50)  NOT NULL COMMENT '订单号快照',
+    user_id       BIGINT       NOT NULL COMMENT '用户ID',
+    amount        DECIMAL(10,2) NOT NULL COMMENT '支付金额',
+    channel       VARCHAR(20)  DEFAULT 'MOCK' COMMENT '支付渠道',
+    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '10=待支付,20=支付成功,30=支付失败',
+    callback_time DATETIME     COMMENT '回调时间',
+    create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0,
+    UNIQUE KEY uk_payment_no (payment_no),
+    UNIQUE KEY uk_order_id (order_id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单表（Phase 9）';
+
+SELECT 'payment_order 表创建完成（Phase 9 - demo027_mall）' AS message;

@@ -1,48 +1,68 @@
-# demo022_mall Phase 4 演进记录 —— 订单系统
+# demo022_mall Phase 4 演进记录 —— 订单系统基础闭环
 
-## 本版本目标
+## 目标
 
-在 demo021_mall（Phase 1-3）基础上，实现**可真实下单的交易闭环**，重点教学：
+在 demo021_mall（Phase 1-3）基础上，实现可真实使用的**下单交易闭环**。
 
-- 事务边界设计
-- 乐观锁在真实业务中的使用
-- 订单 + 订单项领域模型
-- 购物车与订单的联动
+核心教学点：
+- 事务边界设计（一个方法内完成多表操作 + 外部服务调用）
+- 乐观锁在真实业务场景的应用
+- 领域建模（Order + OrderItem + 快照）
+- 认证与权限一致性
 
-## 主要变更
+## 主要新增内容
 
-### 1. 数据库表
-- 新增 `order`（订单主表）
-- 新增 `order_item`（订单明细表，带商品快照）
+### 数据库
+- `order` 表（订单主表）
+- `order_item` 表（订单明细，带商品快照）
 
-### 2. 领域模型
-- `Order` + `OrderItem` 实体
-- 使用快照字段保护历史数据
+### Java 模块
+- `module/order/`
+  - `entity/Order.java`、`OrderItem.java`
+  - `mapper/`
+  - `dto/OrderCreateDTO.java`、`OrderItemDTO.java`
+  - `vo/OrderVO.java`、`OrderItemVO.java`
+  - `service/OrderService.java` + `impl/OrderServiceImpl.java`（含 `@Transactional`）
+  - `controller/OrderController.java`
 
-### 3. 核心功能
-- `POST /api/order` 创建订单（事务方法）
-  - 校验 SKU 状态
-  - 调用 `SkuService.reduceStock`（乐观锁）
-  - 保存订单 + 明细
-  - 同一事务清空购物车
-- 订单列表查询（分页）
-- 订单详情查询（带用户权限校验）
+### 增强
+- `CartService.removeCartItems(userId, skuIds)` 支持批量清理
 
-### 4. 辅助增强
-- `CartService.removeCartItems` 批量删除支持
+## 下单事务边界
 
-## 教学亮点
+`OrderServiceImpl.createOrder()` 使用 `@Transactional` 保证：
+1. 合并重复 SKU 数量
+2. 校验 SKU 状态 + 库存
+3. 调用 `SkuService.reduceStock()`（乐观锁）
+4. 生成订单号（带重试）
+5. 保存 `order` + `order_item`（快照）
+6. 调用 `cartService.removeCartItems()` 清购物车
 
-- 整个下单流程在一个 `@Transactional` 方法内完成，保证 ACID
-- 复用现有乐观锁机制，无需重复实现
-- 清晰的领域划分（Order 模块独立）
+任一失败 → 整体回滚。
 
-## 下一步演进方向（demo023_mall 预留）
+## 已完成的健全性修复
 
-- 订单状态机（待支付 → 已支付 → 已发货 → 已完成 / 取消）
-- 简单支付模拟
-- 订单超时自动取消
+- SecurityUtils 正确处理 `LoginUser` principal
+- 新增 `MybatisPlusConfig`（分页 + 乐观锁插件）
+- 删除 `UserDebugController`，保护 `/api/user/list`
+- 订单创建逻辑强化（重复 SKU 合并、严格异常）
+- 文档全面自洽（无 demo021_mall 残留）
+
+## 验证命令
+
+```bash
+# 构建
+mvn -q -DskipTests package
+
+# 运行
+docker compose up -d
+mvn spring-boot:run
+
+# 验证示例
+curl -X POST /api/auth/login ...
+curl -H "Authorization: Bearer $TOKEN" -X POST /api/order ...
+```
 
 ---
 
-**当前 demo022_mall 已具备完整可用的下单交易能力。**
+**demo022_mall Phase 4 订单基础闭环已完成，可作为 PR 提交。**

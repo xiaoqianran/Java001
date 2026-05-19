@@ -1,6 +1,6 @@
 # demo022_mall API 接口文档（Phase 4 - 订单系统）
 
-> **项目**：demo021_mall - 小型电商系统演进版  
+> **项目**：demo022_mall - 小型电商系统演进版（Phase 4：订单系统）  
 > **当前版本**：Phase 1-3 已完成（用户认证 + 商品域 + 购物车）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
@@ -261,9 +261,8 @@
 
 ## 6. 调试接口（仅开发环境使用）
 
-- `GET /api/user/list`
-- `GET /api/debug/user/list`
-- `GET /api/debug/user/by-username?username=xxx`
+- `GET /api/user/list`（仅 ADMIN 可访问，且不返回 password）
+（调试接口已删除，普通用户无权访问）
 
 > 建议在生产环境关闭或加上 `@PreAuthorize`
 
@@ -298,5 +297,23 @@
 
 ---
 
+## 10. 订单接口（Phase 4 新增）
+
+### 创建订单
+`POST /api/order`
+
+会自动完成：
+- 创建订单记录
+- 扣减对应 SKU 库存（使用乐观锁）
+- 清空购物车中已下单的商品
+
+### 我的订单列表
+`GET /api/order?page=1&size=10`
+
+### 订单详情
+`GET /api/order/{id}`
+
+---
+
 **文档生成时间**：2026-05-19  
-**验证状态**：所有接口在修复 Mapper 扫描问题后已通过实际 curl 测试，全部正常返回 200 / 成功响应。
+**验证状态**：demo022_mall Phase 4 订单闭环已完成，mvn package 通过，文档已自洽。

@@ -7,6 +7,7 @@ import com.mall.module.order.dto.OrderCreateDTO;
 import com.mall.module.order.dto.OrderItemDTO;
 import com.mall.module.order.entity.Order;
 import com.mall.module.order.entity.OrderItem;
+import com.mall.module.order.enums.OrderStatus;
 import com.mall.module.order.mapper.OrderItemMapper;
 import com.mall.module.order.mapper.OrderMapper;
 import com.mall.module.order.service.OrderService;
@@ -27,12 +28,13 @@ import java.util.Random;
 import java.util.stream.Collectors;
 
 /**
- * 订单服务实现（Phase 4 - demo022_mall 核心）
+ * 订单服务实现（Phase 4/5 - demo023_mall 核心）
  *
  * 教学重点：
  * - 一个方法内完成「创建订单 + 扣库存 + 清购物车」的原子操作
- * - 正确使用现有 SkuService.reduceStock（乐观锁）
- * - 事务边界清晰
+ * - Phase 5：订单状态机 + 取消订单（仅待支付可取消 + 库存回滚）
+ * - 正确使用 SkuService.reduceStock / restoreStock（乐观锁）
+ * - 事务边界清晰，状态流转集中通过 OrderStatus 枚举控制
  */
 @Service
 @RequiredArgsConstructor
@@ -103,7 +105,7 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTotalAmount(totalAmount);
-        order.setStatus(10);
+        order.setStatus(OrderStatus.PENDING_PAYMENT.getCode());
         int orderInsert = orderMapper.insert(order);
         if (orderInsert <= 0) {
             throw new BusinessException("创建订单失败");
@@ -235,5 +237,57 @@ public class OrderServiceImpl implements OrderService {
         vo.setPrice(item.getPrice());
         vo.setQuantity(item.getQuantity());
         return vo;
+    }
+
+    // ==================== Phase 5: 取消订单 + 状态机 ====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void cancelOrder(Long userId, Long orderId) {
+        // 1. 校验订单存在 + 属于当前用户（双重保险，防越权）
+        Order order = orderMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getUserId, userId)
+        );
+        if (order == null) {
+            throw new BusinessException(403, "订单不存在或无权操作该订单");
+        }
+
+        // 2. 状态机校验：只有待支付可取消
+        OrderStatus currentStatus = OrderStatus.fromCode(order.getStatus());
+        if (currentStatus == null || !currentStatus.canCancel()) {
+            throw new BusinessException("只有待支付的订单可以取消，当前状态：" + currentStatus);
+        }
+
+        // 3. 查询订单明细，准备回滚库存
+        List<OrderItem> items = orderItemMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+        );
+        if (items.isEmpty()) {
+            // 正常情况不应为空，但防御性处理
+            throw new BusinessException("订单明细为空，无法安全取消");
+        }
+
+        // 4. 逐个恢复库存（必须全部成功，否则事务回滚）
+        for (OrderItem item : items) {
+            boolean restored = skuService.restoreStock(item.getSkuId(), item.getQuantity());
+            if (!restored) {
+                // 理论上 restoreStock 内部已抛，此处兜底
+                throw new BusinessException("库存回滚失败，SKU=" + item.getSkuId());
+            }
+        }
+
+        // 5. 更新订单状态为已取消（50）
+        order.setStatus(OrderStatus.CANCELLED.getCode());
+        // updateTime 由 MP 自动填充（@TableField）
+        int updated = orderMapper.updateById(order);
+        if (updated <= 0) {
+            throw new BusinessException("更新订单状态失败");
+        }
+
+        // 6. 成功：事务提交，状态已变 + 库存已回
+        // 注意：已取消订单不涉及购物车恢复（下单时已清）
     }
 }

@@ -13,7 +13,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * 订单控制器（Phase 4 - demo022_mall）
+ * 订单控制器（Phase 4/5 - demo023_mall）
+ * Phase 5 新增：取消订单接口 + 状态机流转控制（逻辑不散落在 Controller）
  */
 @RestController
 @RequestMapping("/api/order")
@@ -53,6 +54,22 @@ public class OrderController {
         Long userId = getCurrentUserId(request);
         OrderVO vo = orderService.getOrderDetail(userId, id);
         return Result.success(vo);
+    }
+
+    /**
+     * 取消订单（Phase 5）
+     *
+     * 安全与业务规则：
+     * - 必须登录（getCurrentUserId 保证 401）
+     * - 只能取消自己的订单（service 内 403）
+     * - 仅 status=10 待支付可取消（状态机判断）
+     * - 成功后状态=50 + 库存回滚（同一事务）
+     */
+    @PutMapping("/{id}/cancel")
+    public Result<Void> cancelOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        orderService.cancelOrder(userId, id);
+        return Result.success("取消成功", null);
     }
 
     private Long getCurrentUserId(HttpServletRequest request) {

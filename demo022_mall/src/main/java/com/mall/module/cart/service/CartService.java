@@ -43,4 +43,10 @@ public interface CartService extends IService<Cart> {
      * 获取当前用户的购物车列表（携带 SKU 信息）
      */
     List<CartVO> getUserCart(Long userId);
+
+    /**
+     * 【Phase 4 新增】批量删除用户购物车中的指定 SKU
+     * 用于下单成功后原子性清空已购买的购物车商品
+     */
+    boolean removeCartItems(Long userId, List<Long> skuIds);
 }

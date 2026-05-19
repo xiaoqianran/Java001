@@ -122,4 +122,15 @@ public class CartServiceImpl extends ServiceImpl<CartMapper, Cart> implements Ca
             return vo;
         }).collect(Collectors.toList());
     }
+
+    @Override
+    public boolean removeCartItems(Long userId, List<Long> skuIds) {
+        if (skuIds == null || skuIds.isEmpty()) {
+            return true;
+        }
+        return lambdaUpdate()
+                .eq(Cart::getUserId, userId)
+                .in(Cart::getSkuId, skuIds)
+                .remove();
+    }
 }

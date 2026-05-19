@@ -178,3 +178,34 @@ CREATE TABLE payment_order (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单表（Phase 9）';
 
 SELECT 'payment_order 表创建完成（Phase 9 - demo027_mall，Phase 10 新增已退款状态）' AS message;
+
+-- ============================================================
+-- Phase 11: 退款申请与审核（refund_order 表，demo029_mall 新增）
+-- ============================================================
+-- 设计要点：
+-- - 独立于 payment_order，记录“申请事实 + 审核结果”
+-- - status: 10=待审核, 20=已通过(已执行退款), 30=已拒绝
+-- - 同一订单在非终态申请下最多一个进行中申请（通过唯一约束或业务校验）
+-- - 审核通过后才调用退款执行逻辑（订单/支付单状态变更 + 库存恢复）
+-- ============================================================
+
+DROP TABLE IF EXISTS refund_order;
+CREATE TABLE refund_order (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY COMMENT '退款申请ID',
+    order_id      BIGINT       NOT NULL COMMENT '关联的订单ID',
+    user_id       BIGINT       NOT NULL COMMENT '申请人用户ID（BUYER）',
+    reason        VARCHAR(255) NOT NULL COMMENT '退款原因（买家填写）',
+    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '10=待审核, 20=已通过, 30=已拒绝',
+    apply_time    DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
+    review_time   DATETIME     NULL COMMENT '审核时间',
+    reviewer_id   BIGINT       NULL COMMENT '审核人用户ID（ADMIN/SELLER）',
+    review_remark VARCHAR(255) NULL COMMENT '审核备注（通过说明或拒绝原因）',
+    create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0 COMMENT '逻辑删除',
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_order_id (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款申请单（Phase 11）';
+
+SELECT 'refund_order 表创建完成（Phase 11 - demo029_mall 退款申请与审核流程）' AS message;

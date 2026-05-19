@@ -52,11 +52,23 @@ mall:
 `cancelTimeoutOrders()` 中：
 
 1. 查询一批超时订单
-2. 对每个订单调用内部 `cancelTimeoutOrder(orderId)`
-3. 内部方法使用 `@Transactional`
-4. 先执行条件更新把 status 10 → 50
-5. 更新成功后再恢复库存（调用 `skuService.restoreStock`）
-6. 任一库存恢复失败 → 整个事务回滚，状态也回 10
+2. 对每个订单使用 `TransactionTemplate` 开启一段独立事务
+3. 在事务内先执行条件更新把 status 10 → 50（带 `create_time <= ?`）
+4. 更新成功后再恢复库存（调用 `skuService.restoreStock`）
+5. 任一库存恢复失败 → 该订单的 TransactionTemplate 事务回滚，订单状态也保持为 10
+
+**条件更新示例**：
+```sql
+UPDATE `order`
+SET status = 50
+WHERE id = ?
+  AND status = 10
+  AND create_time <= ?
+```
+
+**为什么使用 TransactionTemplate 而非同类 @Transactional 自调用？**
+- 避免 Spring 事务自调用失效问题
+- 确保每个订单的取消操作都是独立的事务边界
 
 **为什么先更新状态再恢复库存？**
 - 防止“状态已取消但库存恢复失败”导致数据不一致

@@ -327,11 +327,12 @@
 
 **请求**：无 Body，路径携带订单ID
 
-**成功响应**：
+**成功响应**（符合项目 Result 统一格式）：
 ```json
 {
-  "code": 0,
-  "msg": "取消成功",
+  "success": true,
+  "code": 200,
+  "message": "取消成功",
   "data": null
 }
 ```

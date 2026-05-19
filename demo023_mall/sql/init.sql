@@ -122,7 +122,7 @@ CREATE TABLE cart (
 SELECT 'cart 表创建完成（Phase 3 Step 1）' AS message;
 
 -- ============================================================
--- Phase 4: 订单系统（demo022_mall 开始开发）
+-- Phase 4: 订单系统（demo022_mall 实现，demo023_mall 继承使用）
 -- ============================================================
 
 -- 订单主表
@@ -154,4 +154,4 @@ CREATE TABLE order_item (
     INDEX idx_order_id (order_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表（Phase 4）';
 
-SELECT 'order & order_item 表创建完成（Phase 4 - demo022_mall）' AS message;
+SELECT 'order & order_item 表创建完成（Phase 4 - demo022_mall 实现，demo023_mall 继承）' AS message;

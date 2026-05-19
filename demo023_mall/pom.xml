@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo022_mall - 小型电商系统（Phase 4：订单系统基础闭环）</name>
+    <name>demo023_mall - 小型电商系统（Phase 5：订单状态机与取消订单）</name>
     <description>
-        demo022_mall 是从 demo021_mall 演进而来的订单系统版本（Phase 4）。
-        已完成用户认证（Phase 1）、商品域 Category/SPU/SKU（Phase 2）、购物车（Phase 3）。
-        后续 demo022_mall、demo023_mall 将在此基础上循序渐进地添加订单、支付、缓存优化等功能。
+        demo023_mall 是从 demo022_mall 演进而来的订单状态机版本（Phase 5）。
+        继承 demo022_mall 的 Phase 4 订单基础闭环（下单事务 + 库存扣减）。
+        本版本实现订单状态机、取消订单（待支付态）+ 库存回滚。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

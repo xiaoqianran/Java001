@@ -1,4 +1,4 @@
-# demo022_mall Phase 4 演进记录 —— 订单系统基础闭环
+# demo022_mall Phase 4 演进记录 —— 订单系统基础闭环（demo023_mall 继承此基线）
 
 ## 目标
 
@@ -65,4 +65,4 @@ curl -H "Authorization: Bearer $TOKEN" -X POST /api/order ...
 
 ---
 
-**demo022_mall Phase 4 订单基础闭环已完成，可作为 PR 提交。**
+**demo022_mall Phase 4 订单基础闭环已完成（作为 demo023_mall 的历史基线保留）。**

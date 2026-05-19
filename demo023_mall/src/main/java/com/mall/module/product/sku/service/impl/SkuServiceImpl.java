@@ -71,7 +71,13 @@ public class SkuServiceImpl extends ServiceImpl<SkuMapper, Sku> implements SkuSe
             throw new BusinessException("SKU 不存在");
         }
 
+        // 乐观锁回补：getById 已带 version，updateById 自动 WHERE version = ?
         sku.setStock(sku.getStock() + quantity);
-        return updateById(sku);
+        boolean success = updateById(sku);
+        if (!success) {
+            // 版本冲突或更新失败，必须抛出以便上层事务回滚
+            throw new BusinessException("库存回补失败，请重试（可能存在并发冲突）");
+        }
+        return true;
     }
 }

@@ -4,16 +4,19 @@ import com.mall.common.result.Result;
 import com.mall.module.user.entity.User;
 import com.mall.module.user.service.UserService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * =====================================================================
- * 【demo021_mall - Phase 1 后续优化】用户管理控制器（已迁移注册功能）
+ * 【demo022_mall - Phase 4 健全性修复】用户管理控制器
  * =====================================================================
+ * /api/user/list 仅管理员可访问，且不返回密码。
  *
  * 注意：
  * 用户注册功能已迁移至 /api/auth/register（更符合领域划分）。
@@ -28,10 +31,14 @@ public class UserController {
     private final UserService userService;
 
     /**
-     * 临时调试接口：查看所有用户（仅开发环境使用）
+     * 查看所有用户（仅管理员）
      */
     @GetMapping("/list")
+    @PreAuthorize("hasRole('ADMIN')")
     public Result<List<User>> listAll() {
-        return Result.success(userService.list());
+        List<User> users = userService.list().stream()
+                .peek(u -> u.setPassword(null)) // 安全：不返回密码
+                .collect(Collectors.toList());
+        return Result.success(users);
     }
 }

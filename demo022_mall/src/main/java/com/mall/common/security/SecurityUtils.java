@@ -6,8 +6,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 
 /**
  * =====================================================================
- * 【demo021_mall - Phase 1 Step 5】安全工具类（当前用户获取增强版）
+ * 【demo022_mall - Phase 4 健全性修复】安全工具类
  * =====================================================================
+ * 已适配 JwtAuthenticationFilter 将 LoginUser 直接放入 principal 的情况。
  *
  * 本步骤核心变化：
  * - 新增 `getCurrentUser()` 方法，返回 `LoginUser` 对象
@@ -42,14 +43,16 @@ public class SecurityUtils {
             return null;
         }
 
-        // 当前阶段 principal 是 username（字符串）
-        // 更理想的做法是让 Filter 直接把 LoginUser 作为 principal 存入
-        String username = authentication.getName();
+        // 优先：JwtAuthenticationFilter 已将完整 LoginUser 放入 principal
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof LoginUser) {
+            return (LoginUser) principal;
+        }
 
-        // 尝试从 request attribute 补充信息（Controller 层可用）
-        // 注意：Service 层调用时通常拿不到 request，这里先返回基本信息
+        // 兜底：从 request attribute 构造（Controller 层可用）
+        // 注意：纯 Service 层调用时拿不到 request，这里返回基本信息
         return LoginUser.builder()
-                .username(username)
+                .username(authentication.getName())
                 .build();
     }
 
@@ -63,6 +66,13 @@ public class SecurityUtils {
             return null;
         }
 
+        // 优先返回 Filter 中放入的完整 LoginUser
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof LoginUser) {
+            return (LoginUser) principal;
+        }
+
+        // 兜底使用 request attribute
         Object userIdAttr = request.getAttribute("currentUserId");
         Object roleAttr = request.getAttribute("currentUserRole");
 
@@ -80,6 +90,11 @@ public class SecurityUtils {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
             return null;
+        }
+
+        Object principal = authentication.getPrincipal();
+        if (principal instanceof LoginUser) {
+            return ((LoginUser) principal).getUsername();
         }
         return authentication.getName();
     }

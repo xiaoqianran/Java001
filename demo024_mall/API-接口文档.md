@@ -1,7 +1,7 @@
-# demo023_mall API 接口文档（Phase 5 - 订单状态机与取消订单）
+# demo024_mall API 接口文档（Phase 6 - 简单支付模拟）
 
-> **项目**：demo023_mall - 小型电商系统演进版（Phase 5：订单状态机与取消订单）  
-> **当前版本**：Phase 1-5 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消）  
+> **项目**：demo024_mall - 小型电商系统演进版（Phase 6：简单支付模拟与订单支付状态流转）  
+> **当前版本**：Phase 1-6 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
 
@@ -349,9 +349,40 @@ curl -X PUT http://localhost:8080/api/order/42/cancel \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### 支付订单（Phase 6 新增）
+`PUT /api/order/{id}/pay`
+
+**业务规则**：
+- 仅 `status=10`（待支付）的订单可以支付
+- 只能支付**自己的**订单
+- 支付成功后：订单状态变为 20（已支付）
+- 已取消、已支付、已完成、已发货的订单**均不可支付**
+- 使用原子条件更新防止并发重复支付
+
+**成功响应**（符合项目 Result 统一格式）：
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "支付成功",
+  "data": null
+}
+```
+
+**失败场景**：
+- 未登录：401
+- 非本人订单或状态不允许：业务错误 "订单状态已变化，不能支付"
+- 重复支付：同上
+
+**示例 curl**：
+```bash
+curl -X PUT http://localhost:8080/api/order/42/pay \
+  -H "Authorization: Bearer $TOKEN"
+```
+
 ---
 
-## 11. 订单状态机说明（Phase 5）
+## 11. 订单状态机说明（Phase 6）
 
 详见 [Phase5.md](./Phase5.md)：
 - 状态定义与流转白名单
@@ -361,4 +392,4 @@ curl -X PUT http://localhost:8080/api/order/42/cancel \
 ---
 
 **文档生成时间**：2026-05-19  
-**验证状态**：demo023_mall Phase 5 订单状态机 + 取消订单已完成，mvn package 通过，文档已自洽。新增 PUT /api/order/{id}/cancel 接口。
+**验证状态**：demo024_mall Phase 6 简单支付模拟已完成，mvn package 通过，文档已自洽。新增 PUT /api/order/{id}/pay 接口（10 → 20）。

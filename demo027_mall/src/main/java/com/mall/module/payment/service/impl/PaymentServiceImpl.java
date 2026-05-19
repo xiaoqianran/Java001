@@ -115,7 +115,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 3. 校验金额
         if (dto.getPaidAmount() == null || dto.getPaidAmount().compareTo(payment.getAmount()) != 0) {
-            recordPaymentFailure(payment, "支付金额不匹配");
+            // 金额不匹配，直接失败，不落库（由外层事务决定是否记录）
             throw new BusinessException("支付金额不匹配");
         }
 
@@ -134,7 +134,7 @@ public class PaymentServiceImpl implements PaymentService {
 
         // 6. 订单状态校验
         if (order.getStatus() == OrderStatus.CANCELLED.getCode()) {
-            recordPaymentFailure(payment, "订单已取消");
+            // 订单已取消，直接失败，不落库
             throw new BusinessException("订单已取消，不能支付");
         }
 
@@ -170,19 +170,10 @@ public class PaymentServiceImpl implements PaymentService {
             log.info("支付回调处理成功, paymentNo={}, orderId={}", dto.getPaymentNo(), order.getId());
 
         } else {
-            // 支付失败（不落库，由调用方决定）
-            // 这里我们只记录日志，不强制落库
+            // 支付失败（payStatus != SUCCESS）
+            // 本阶段重点处理 SUCCESS 回调，失败回调仅记录日志，不做复杂业务处理
+            log.info("支付回调为失败状态, paymentNo={}, payStatus={}", dto.getPaymentNo(), dto.getPayStatus());
         }
-    }
-
-    /**
-     * 在独立事务中记录支付失败状态（确保即使外层事务回滚，FAILED 状态也能落库）
-     */
-    @Transactional(propagation = org.springframework.transaction.annotation.Propagation.REQUIRES_NEW)
-    public void recordPaymentFailure(PaymentOrder payment, String reason) {
-        payment.setStatus(PaymentStatus.FAILED.getCode());
-        paymentOrderMapper.updateById(payment);
-        log.warn("支付单标记为失败, paymentNo={}, reason={}", payment.getPaymentNo(), reason);
     }
 
     private String generatePaymentNo() {

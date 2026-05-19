@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo025_mall - 小型电商系统（Phase 7：订单发货与完成状态流转）</name>
+    <name>demo026_mall - 小型电商系统（Phase 8：订单超时自动取消）</name>
     <description>
-        demo025_mall 是小型电商系统演进的 Phase 7 版本。
-        本版本实现订单发货与完成状态流转：已支付订单（20）→ 已发货（30）→ 已完成（40）。
-        使用原子条件更新 + 角色权限控制。
+        demo026_mall 是小型电商系统演进的 Phase 8 版本。
+        本版本实现订单超时自动取消：待支付订单（10）超过配置时间未支付，自动取消并恢复库存。
+        使用 Spring @Scheduled + 条件更新保证并发安全。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mall.common.security.LoginUser;
 import com.mall.config.OrderTimeoutProperties;
 import com.mall.module.order.dto.OrderCreateDTO;
+import org.springframework.transaction.support.TransactionTemplate;
 import com.mall.module.order.dto.OrderItemDTO;
 import com.mall.module.order.entity.Order;
 import com.mall.module.order.entity.OrderItem;
@@ -49,6 +50,7 @@ public class OrderServiceImpl implements OrderService {
     private final SkuService skuService;
     private final CartService cartService;
     private final OrderTimeoutProperties orderTimeoutProperties;
+    private final TransactionTemplate transactionTemplate;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -407,8 +409,11 @@ public class OrderServiceImpl implements OrderService {
 
         for (Order order : timeoutOrders) {
             try {
-                boolean cancelled = cancelTimeoutOrder(order.getId());
-                if (cancelled) {
+                Boolean result = transactionTemplate.execute(status -> {
+                    boolean cancelled = doCancelTimeoutOrder(order.getId(), timeoutThreshold);
+                    return cancelled;
+                });
+                if (Boolean.TRUE.equals(result)) {
                     successCount++;
                 } else {
                     failCount++;
@@ -424,22 +429,20 @@ public class OrderServiceImpl implements OrderService {
     }
 
     /**
-     * 取消单个超时订单（内部方法，必须在事务中）
-     *
-     * @return 是否成功取消
+     * 实际执行单个超时订单取消的逻辑（在 TransactionTemplate 事务内执行）
      */
-    @Transactional(rollbackFor = Exception.class)
-    public boolean cancelTimeoutOrder(Long orderId) {
-        // 1. 原子条件更新：只有 status=10 才能取消
+    private boolean doCancelTimeoutOrder(Long orderId, LocalDateTime timeoutThreshold) {
+        // 1. 原子条件更新：status=10 且 create_time <= timeoutThreshold
         int affected = orderMapper.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
                         .eq(Order::getId, orderId)
                         .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                        .le(Order::getCreateTime, timeoutThreshold)
                         .set(Order::getStatus, OrderStatus.CANCELLED.getCode())
         );
 
         if (affected != 1) {
-            // 已被支付、主动取消或其他并发操作
+            // 订单可能已被支付、主动取消、或未真正超时
             return false;
         }
 
@@ -451,7 +454,7 @@ public class OrderServiceImpl implements OrderService {
 
         for (OrderItem item : items) {
             skuService.restoreStock(item.getSkuId(), item.getQuantity());
-            // 如果 restoreStock 失败，会抛异常，导致整个事务回滚
+            // 如果 restoreStock 失败，会抛异常，导致 TransactionTemplate 事务回滚
         }
 
         log.info("超时订单自动取消成功，orderId={}", orderId);

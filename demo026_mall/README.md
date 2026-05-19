@@ -86,6 +86,6 @@ mvn clean spring-boot:run
 - [Phase7.md](./Phase7.md)（发货与完成状态流转）
 - [API-接口文档.md](./API-接口文档.md)
 
-**demo025_mall Phase 7 订单发货与完成状态流转已完成。**
+**demo026_mall Phase 8 订单超时自动取消已完成。**
 
 下一步建议：支付回调模拟、真实物流单、退款流程、引入 Redis 等（后续版本择一推进）。

@@ -1,7 +1,7 @@
-# demo025_mall API 接口文档（Phase 7 - 订单发货与完成状态流转）
+# demo026_mall API 接口文档（Phase 8 - 订单超时自动取消）
 
-> **项目**：demo025_mall - 小型电商系统演进版（Phase 7：订单发货与完成状态流转）  
-> **当前版本**：Phase 1-7 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成）  
+> **项目**：demo026_mall - 小型电商系统演进版（Phase 8：订单超时自动取消）  
+> **当前版本**：Phase 1-8 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成 + 超时自动取消）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
 
@@ -419,6 +419,11 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
   "data": null
 }
 ```
+
+### 订单超时自动取消（Phase 8 新增）
+
+本阶段**没有新增用户 API**。
+系统通过后台定时任务（`@Scheduled`）自动扫描 `status=10` 且 `create_time` 超过配置阈值的订单，自动将状态改为 `status=50` 并恢复对应 SKU 库存。
 
 ---
 

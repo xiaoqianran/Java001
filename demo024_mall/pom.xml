@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo023_mall - 小型电商系统（Phase 5：订单状态机与取消订单）</name>
+    <name>demo024_mall - 小型电商系统（Phase 6：简单支付模拟与订单支付状态流转）</name>
     <description>
-        demo023_mall 是从 demo022_mall 演进而来的订单状态机版本（Phase 5）。
-        继承 demo022_mall 的 Phase 4 订单基础闭环（下单事务 + 库存扣减）。
-        本版本实现订单状态机、取消订单（待支付态）+ 库存回滚。
+        demo024_mall 是从 demo023_mall 演进而来的简单支付模拟版本（Phase 6）。
+        继承 demo023_mall 的 Phase 5 订单状态机（取消订单）。
+        本版本实现 10→20 支付状态流转 + 模拟支付接口。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

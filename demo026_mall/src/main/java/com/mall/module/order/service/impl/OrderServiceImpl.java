@@ -4,6 +4,7 @@ import com.mall.common.exception.BusinessException;
 import com.mall.module.cart.service.CartService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mall.common.security.LoginUser;
+import com.mall.config.OrderTimeoutProperties;
 import com.mall.module.order.dto.OrderCreateDTO;
 import com.mall.module.order.dto.OrderItemDTO;
 import com.mall.module.order.entity.Order;
@@ -45,6 +46,7 @@ public class OrderServiceImpl implements OrderService {
     private final OrderItemMapper orderItemMapper;
     private final SkuService skuService;
     private final CartService cartService;
+    private final OrderTimeoutProperties orderTimeoutProperties;
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -374,5 +376,83 @@ public class OrderServiceImpl implements OrderService {
         if (affected != 1) {
             throw new BusinessException("订单状态已变化，不能完成");
         }
+    }
+
+    // ==================== Phase 8: 超时自动取消 ====================
+
+    @Override
+    public int cancelTimeoutOrders() {
+        LocalDateTime now = LocalDateTime.now();
+        int timeoutMinutes = orderTimeoutProperties.getTimeoutMinutes();
+        int batchSize = orderTimeoutProperties.getTimeoutBatchSize();
+
+        LocalDateTime timeoutThreshold = now.minusMinutes(timeoutMinutes);
+
+        log.info("开始扫描超时订单，超时阈值: {} ({}分钟前)", timeoutThreshold, timeoutMinutes);
+
+        // 查询超时待支付订单
+        List<Order> timeoutOrders = orderMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                        .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                        .le(Order::getCreateTime, timeoutThreshold)
+                        .last("LIMIT " + batchSize)
+        );
+
+        log.info("扫描到 {} 条超时待支付订单", timeoutOrders.size());
+
+        int successCount = 0;
+        int failCount = 0;
+
+        for (Order order : timeoutOrders) {
+            try {
+                boolean cancelled = cancelTimeoutOrder(order.getId());
+                if (cancelled) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            } catch (Exception e) {
+                log.error("取消超时订单失败，orderId={}, 原因: {}", order.getId(), e.getMessage());
+                failCount++;
+            }
+        }
+
+        log.info("本次超时取消完成，成功: {}, 失败: {}", successCount, failCount);
+        return successCount;
+    }
+
+    /**
+     * 取消单个超时订单（内部方法，必须在事务中）
+     *
+     * @return 是否成功取消
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public boolean cancelTimeoutOrder(Long orderId) {
+        // 1. 原子条件更新：只有 status=10 才能取消
+        int affected = orderMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                        .set(Order::getStatus, OrderStatus.CANCELLED.getCode())
+        );
+
+        if (affected != 1) {
+            // 已被支付、主动取消或其他并发操作
+            return false;
+        }
+
+        // 2. 查询订单明细，恢复库存
+        List<OrderItem> items = orderItemMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+        );
+
+        for (OrderItem item : items) {
+            skuService.restoreStock(item.getSkuId(), item.getQuantity());
+            // 如果 restoreStock 失败，会抛异常，导致整个事务回滚
+        }
+
+        log.info("超时订单自动取消成功，orderId={}", orderId);
+        return true;
     }
 }

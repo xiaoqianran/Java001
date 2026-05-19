@@ -84,4 +84,11 @@ public interface OrderService {
      * - 使用原子条件更新防止并发
      */
     void completeOrder(LoginUser operator, Long orderId);
+
+    /**
+     * 取消所有超时的待支付订单（Phase 8 定时任务调用）
+     *
+     * @return 本次成功取消的订单数量
+     */
+    int cancelTimeoutOrders();
 }

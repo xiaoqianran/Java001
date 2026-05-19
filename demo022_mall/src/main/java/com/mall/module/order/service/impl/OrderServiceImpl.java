@@ -2,6 +2,7 @@ package com.mall.module.order.service.impl;
 
 import com.mall.common.exception.BusinessException;
 import com.mall.module.cart.service.CartService;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mall.module.order.dto.OrderCreateDTO;
 import com.mall.module.order.dto.OrderItemDTO;
 import com.mall.module.order.entity.Order;
@@ -9,6 +10,8 @@ import com.mall.module.order.entity.OrderItem;
 import com.mall.module.order.mapper.OrderItemMapper;
 import com.mall.module.order.mapper.OrderMapper;
 import com.mall.module.order.service.OrderService;
+import com.mall.module.order.vo.OrderItemVO;
+import com.mall.module.order.vo.OrderVO;
 import com.mall.module.product.sku.entity.Sku;
 import com.mall.module.product.sku.service.SkuService;
 import lombok.RequiredArgsConstructor;
@@ -121,5 +124,90 @@ public class OrderServiceImpl implements OrderService {
         String time = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
         int random = new Random().nextInt(10000);
         return "ORD" + time + String.format("%04d", random) + userId % 10000;
+    }
+
+    @Override
+    public Page<OrderVO> listUserOrders(Long userId, int current, int size) {
+        // 1. 查询当前用户的订单（分页）
+        var orderPage = orderMapper.selectPage(
+                new Page<>(current, size),
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                        .eq(Order::getUserId, userId)
+                        .orderByDesc(Order::getCreateTime)
+        );
+
+        if (orderPage.getRecords().isEmpty()) {
+            return new Page<>();
+        }
+
+        // 2. 批量查询所有订单的明细
+        List<Long> orderIds = orderPage.getRecords().stream().map(Order::getId).collect(Collectors.toList());
+        List<OrderItem> allItems = orderItemMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderItem>()
+                        .in(OrderItem::getOrderId, orderIds)
+        );
+
+        // 3. 按 orderId 分组
+        java.util.Map<Long, List<OrderItem>> itemsMap = allItems.stream()
+                .collect(java.util.stream.Collectors.groupingBy(OrderItem::getOrderId));
+
+        // 4. 组装 VO
+        List<OrderVO> voList = orderPage.getRecords().stream().map(order -> {
+            OrderVO vo = new OrderVO();
+            vo.setId(order.getId());
+            vo.setOrderNo(order.getOrderNo());
+            vo.setTotalAmount(order.getTotalAmount());
+            vo.setStatus(order.getStatus());
+            vo.setCreateTime(order.getCreateTime());
+
+            List<OrderItem> items = itemsMap.getOrDefault(order.getId(), java.util.Collections.emptyList());
+            vo.setItems(items.stream().map(this::convertToItemVO).collect(Collectors.toList()));
+            return vo;
+        }).collect(Collectors.toList());
+
+        Page<OrderVO> resultPage = new Page<>();
+        resultPage.setRecords(voList);
+        resultPage.setTotal(orderPage.getTotal());
+        resultPage.setCurrent(orderPage.getCurrent());
+        resultPage.setSize(orderPage.getSize());
+        return resultPage;
+    }
+
+    @Override
+    public OrderVO getOrderDetail(Long userId, Long orderId) {
+        Order order = orderMapper.selectOne(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getUserId, userId)
+        );
+        if (order == null) {
+            throw new BusinessException("订单不存在或无权限查看");
+        }
+
+        List<OrderItem> items = orderItemMapper.selectList(
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+        );
+
+        OrderVO vo = new OrderVO();
+        vo.setId(order.getId());
+        vo.setOrderNo(order.getOrderNo());
+        vo.setTotalAmount(order.getTotalAmount());
+        vo.setStatus(order.getStatus());
+        vo.setCreateTime(order.getCreateTime());
+        vo.setItems(items.stream().map(this::convertToItemVO).collect(Collectors.toList()));
+
+        return vo;
+    }
+
+    private OrderItemVO convertToItemVO(OrderItem item) {
+        OrderItemVO vo = new OrderItemVO();
+        vo.setId(item.getId());
+        vo.setSkuId(item.getSkuId());
+        vo.setSkuName(item.getSkuName());
+        vo.setSkuSpecs(item.getSkuSpecs());
+        vo.setPrice(item.getPrice());
+        vo.setQuantity(item.getQuantity());
+        return vo;
     }
 }

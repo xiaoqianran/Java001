@@ -58,4 +58,28 @@ public interface OrderService {
      * - 整个操作在同一个 @Transactional 中
      */
     void payOrder(Long userId, Long orderId);
+
+    /**
+     * 发货订单（Phase 7）
+     *
+     * 规则：
+     * - 仅 ADMIN 或 SELLER 可操作
+     * - 仅 status=20 已支付 可发货
+     * - 成功后状态 20 → 30
+     * - 使用原子条件更新防止并发
+     */
+    void shipOrder(Long operatorUserId, Long orderId);
+
+    /**
+     * 完成订单（Phase 7）
+     *
+     * 规则：
+     * - BUYER 只能完成自己的订单
+     * - ADMIN 可完成任意
+     * - SELLER 可完成已发货的
+     * - 仅 status=30 已发货 可完成
+     * - 成功后状态 30 → 40
+     * - 使用原子条件更新防止并发
+     */
+    void completeOrder(Long operatorUserId, Long orderId);
 }

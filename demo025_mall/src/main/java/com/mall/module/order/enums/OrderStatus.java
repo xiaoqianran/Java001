@@ -4,16 +4,16 @@ import com.mall.common.exception.BusinessException;
 import java.util.Arrays;
 
 /**
- * 订单状态枚举（Phase 6 - demo024_mall 支付模拟核心）
+ * 订单状态枚举（Phase 7 - demo025_mall 发货完成核心）
  *
  * 设计要点：
  * - 状态码与数据库一致：10/20/30/40/50
  * - 提供 fromCode 工厂方法（非法 code 抛 BusinessException）
- * - 封装状态流转规则（canCancel、canPay、isTerminal），集中管理
+ * - 封装状态流转规则（canCancel、canPay、canShip、canComplete、isTerminal）
  *
  * 教学价值：
- * - 状态机规则全部收敛到枚举
- * - 为后续真实支付、发货、完成流转做准备
+ * - 状态机 + 权限结合
+ * - 完整买家端订单生命周期
  */
 public enum OrderStatus {
 
@@ -79,6 +79,22 @@ public enum OrderStatus {
     }
 
     /**
+     * 判断当前状态是否允许发货
+     * 规则：仅 20(已支付) 可发货（Phase 7 新增）
+     */
+    public boolean canShip() {
+        return this == PAID;
+    }
+
+    /**
+     * 判断当前状态是否允许完成
+     * 规则：仅 30(已发货) 可完成（Phase 7 新增）
+     */
+    public boolean canComplete() {
+        return this == SHIPPED;
+    }
+
+    /**
      * 是否为终态（不允许再流转）
      * 别名 isTerminal，便于后续代码阅读
      */
@@ -88,7 +104,7 @@ public enum OrderStatus {
 
     /**
      * 是否为终态（不允许再流转）
-     * Phase 6 明确定义：COMPLETED 和 CANCELLED 是终态
+     * Phase 6/7 明确定义：COMPLETED 和 CANCELLED 是终态
      */
     public boolean isTerminal() {
         return this == COMPLETED || this == CANCELLED;

@@ -1,7 +1,7 @@
-# demo024_mall API 接口文档（Phase 6 - 简单支付模拟）
+# demo025_mall API 接口文档（Phase 7 - 订单发货与完成状态流转）
 
-> **项目**：demo024_mall - 小型电商系统演进版（Phase 6：简单支付模拟与订单支付状态流转）  
-> **当前版本**：Phase 1-6 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟）  
+> **项目**：demo025_mall - 小型电商系统演进版（Phase 7：订单发货与完成状态流转）  
+> **当前版本**：Phase 1-7 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
 
@@ -380,9 +380,49 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
   -H "Authorization: Bearer $TOKEN"
 ```
 
+### 发货订单（Phase 7 新增）
+`PUT /api/order/{id}/ship`
+
+**业务规则**：
+- 仅 ADMIN 或 SELLER 可操作
+- 仅 `status=20`（已支付）的订单可以发货
+- 成功后状态变为 30（已发货）
+- 使用原子条件更新防止并发
+
+**成功响应**：
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "发货成功",
+  "data": null
+}
+```
+
+### 完成订单（Phase 7 新增）
+`PUT /api/order/{id}/complete`
+
+**业务规则**：
+- BUYER 只能完成自己的订单
+- ADMIN 可完成任意订单
+- SELLER 可完成已发货的订单
+- 仅 `status=30`（已发货）的订单可以完成
+- 成功后状态变为 40（已完成）
+- 使用原子条件更新防止并发
+
+**成功响应**：
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "确认完成成功",
+  "data": null
+}
+```
+
 ---
 
-## 11. 订单状态机说明（Phase 6）
+## 11. 订单状态机说明（Phase 7）
 
 本阶段在 Phase 5 基础上扩展了支付流转：
 
@@ -394,4 +434,4 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 ---
 
 **文档生成时间**：2026-05-19  
-**验证状态**：demo024_mall Phase 6 简单支付模拟已完成，mvn package 通过，文档已自洽。新增 PUT /api/order/{id}/pay 接口（10 → 20）。
+**验证状态**：demo025_mall Phase 7 订单发货与完成状态流转已完成，mvn package 通过，文档已自洽。新增 PUT /api/order/{id}/ship 和 PUT /api/order/{id}/complete 接口。

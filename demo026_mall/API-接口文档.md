@@ -422,18 +422,16 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 
 ---
 
-## 11. 订单状态机说明（Phase 7）
+## 11. 订单状态机说明（Phase 8）
 
-本阶段在 Phase 6 基础上扩展发货与完成流转：
+本阶段在 Phase 7 基础上增加超时自动取消机制：
 
-- **10（待支付）→ 50（已取消）**：取消订单，Phase 5 已实现。
-- **10（待支付）→ 20（已支付）**：支付订单，Phase 6 已实现。
-- **20（已支付）→ 30（已发货）**：发货订单，Phase 7 新增（ADMIN/SELLER 操作，原子更新）。
-- **30（已发货）→ 40（已完成）**：完成订单，Phase 7 新增（BUYER/ADMIN/SELLER，原子更新）。
-
-完整状态机设计、权限规则与事务边界说明详见 [Phase7.md](./Phase7.md)。
+- **10（待支付）→ 50（已取消）**：支持用户主动取消（Phase 5） + 系统超时自动取消（Phase 8）
+- 超时取消由后台定时任务触发，自动恢复库存
+- 完整状态机 + 并发安全设计详见 [Phase8.md](./Phase8.md)
 
 ---
 
 **文档生成时间**：2026-05-19  
-**验证状态**：demo025_mall Phase 7 订单发货与完成状态流转已完成，mvn package 通过，文档已自洽。新增 PUT /api/order/{id}/ship 和 PUT /api/order/{id}/complete 接口。
+**验证状态**：demo026_mall Phase 8 订单超时自动取消已完成，mvn package 通过，文档已自洽。
+本阶段无新增用户接口，新增的是系统后台定时任务（@Scheduled），自动将超时的 status=10 订单变为 status=50 并恢复库存。

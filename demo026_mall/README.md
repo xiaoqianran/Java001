@@ -60,11 +60,11 @@ mvn clean spring-boot:run
 
 ---
 
-## 新增接口（Phase 7）
+## 本阶段新增（Phase 8）
 
-- `PUT /api/order/{id}/pay` —— 模拟支付成功（10 → 20）
-- `PUT /api/order/{id}/ship` —— 发货（20 → 30，ADMIN/SELLER 操作）
-- `PUT /api/order/{id}/complete` —— 确认完成（30 → 40）
+- 无新增用户接口
+- 新增后台定时任务：自动扫描并取消超时的待支付订单（10 → 50），同时恢复库存
+- 配置化超时时间与扫描频率
 
 ---
 
@@ -88,4 +88,4 @@ mvn clean spring-boot:run
 
 **demo025_mall Phase 7 订单发货与完成状态流转已完成。**
 
-下一步建议：订单超时自动取消、支付回调模拟、真实物流/退款（三者后续择一）。
+下一步建议：支付回调模拟、真实物流单、退款流程、引入 Redis 等（后续版本择一推进）。

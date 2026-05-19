@@ -1,6 +1,7 @@
 package com.mall.module.order.controller;
 
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mall.common.exception.BusinessException;
 import com.mall.common.result.Result;
 import com.mall.common.security.SecurityUtils;
 import com.mall.module.order.dto.OrderCreateDTO;
@@ -57,7 +58,7 @@ public class OrderController {
     private Long getCurrentUserId(HttpServletRequest request) {
         var loginUser = SecurityUtils.getCurrentUser(request);
         if (loginUser == null || loginUser.getUserId() == null) {
-            throw new RuntimeException("请先登录");
+            throw new BusinessException(401, "请先登录");
         }
         return loginUser.getUserId();
     }

@@ -66,6 +66,10 @@ public class SkuServiceImpl extends ServiceImpl<SkuMapper, Sku> implements SkuSe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean restoreStock(Long skuId, Integer quantity) {
+        if (quantity == null || quantity <= 0) {
+            throw new BusinessException("恢复库存数量必须大于0");
+        }
+
         Sku sku = getById(skuId);
         if (sku == null) {
             throw new BusinessException("SKU 不存在");
@@ -75,8 +79,8 @@ public class SkuServiceImpl extends ServiceImpl<SkuMapper, Sku> implements SkuSe
         sku.setStock(sku.getStock() + quantity);
         boolean success = updateById(sku);
         if (!success) {
-            // 版本冲突或更新失败，必须抛出以便上层事务回滚
-            throw new BusinessException("库存回补失败，请重试（可能存在并发冲突）");
+            // 必须抛出确切消息，便于上层事务回滚
+            throw new BusinessException("库存回滚失败，请重试");
         }
         return true;
     }

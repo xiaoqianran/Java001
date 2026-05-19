@@ -244,50 +244,36 @@ public class OrderServiceImpl implements OrderService {
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void cancelOrder(Long userId, Long orderId) {
-        // 1. 校验订单存在 + 属于当前用户（双重保险，防越权）
-        Order order = orderMapper.selectOne(
-                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+        // 1. 先做原子条件更新：只有 status=10 时才能成功把状态改成 50
+        //    这能防止两个并发请求都通过“先查后改”而重复取消
+        int affected = orderMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
                         .eq(Order::getId, orderId)
                         .eq(Order::getUserId, userId)
+                        .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                        .set(Order::getStatus, OrderStatus.CANCELLED.getCode())
         );
-        if (order == null) {
-            throw new BusinessException(403, "订单不存在或无权操作该订单");
+
+        if (affected != 1) {
+            // 0 行：状态已不是 10（可能是并发取消、已支付等），或订单不存在/不属于该用户
+            throw new BusinessException("订单状态已变化，不能取消");
         }
 
-        // 2. 状态机校验：只有待支付可取消
-        OrderStatus currentStatus = OrderStatus.fromCode(order.getStatus());
-        if (currentStatus == null || !currentStatus.canCancel()) {
-            throw new BusinessException("只有待支付的订单可以取消，当前状态：" + currentStatus);
-        }
-
-        // 3. 查询订单明细，准备回滚库存
+        // 2. 状态已成功原子切换到 50，再查明细做库存回滚
+        //    如果此时恢复库存失败，事务会回滚，状态也会回到 10（数据库保证）
         List<OrderItem> items = orderItemMapper.selectList(
                 new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<OrderItem>()
                         .eq(OrderItem::getOrderId, orderId)
         );
         if (items.isEmpty()) {
-            // 正常情况不应为空，但防御性处理
             throw new BusinessException("订单明细为空，无法安全取消");
         }
 
-        // 4. 逐个恢复库存（必须全部成功，否则事务回滚）
         for (OrderItem item : items) {
-            boolean restored = skuService.restoreStock(item.getSkuId(), item.getQuantity());
-            if (!restored) {
-                // 理论上 restoreStock 内部已抛，此处兜底
-                throw new BusinessException("库存回滚失败，SKU=" + item.getSkuId());
-            }
+            skuService.restoreStock(item.getSkuId(), item.getQuantity());
+            // restoreStock 内部失败会直接抛出，触发整个事务回滚
         }
 
-        // 5. 更新订单状态为已取消（50）
-        order.setStatus(OrderStatus.CANCELLED.getCode());
-        // updateTime 由 MP 自动填充（@TableField）
-        int updated = orderMapper.updateById(order);
-        if (updated <= 0) {
-            throw new BusinessException("更新订单状态失败");
-        }
-
-        // 6. 成功：事务提交，状态已变 + 库存已回
-        // 注意：已取消订单不涉及购物车恢复（下单时已清）
+        // 3. 全部成功，事务提交。状态=50 + 库存已回滚
     }
 }

@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo024_mall - 小型电商系统（Phase 6：简单支付模拟与订单支付状态流转）</name>
+    <name>demo024_mall - 小型电商系统（Phase 6：简单支付模拟）</name>
     <description>
-        demo024_mall 是从 demo023_mall 演进而来的简单支付模拟版本（Phase 6）。
-        继承 demo023_mall 的 Phase 5 订单状态机（取消订单）。
-        本版本实现 10→20 支付状态流转 + 模拟支付接口。
+        demo024_mall 是小型电商系统演进的 Phase 6 版本。
+        本版本实现简单支付模拟：待支付订单（10）通过模拟支付成功流转到已支付（20）。
+        使用原子条件更新防止并发重复支付。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

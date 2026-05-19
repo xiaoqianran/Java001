@@ -77,7 +77,7 @@ mall:
 
   payment:
     # 模拟支付回调密钥（Phase 9）
-    mock-callback-secret: demo027
+    mock-callback-secret: demo028
 
 # ==================== JWT 配置（Phase 1 Step 3 引入） ====================
 jwt:

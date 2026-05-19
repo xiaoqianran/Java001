@@ -1,5 +1,5 @@
 # ============================================================
-# demo027_mall 多阶段 Dockerfile（Phase 9 继承自 demo026_mall 基线）
+# demo028_mall 多阶段 Dockerfile（Phase 10 继承自 demo027_mall 基线）
 # ============================================================
 FROM maven:3.9-eclipse-temurin-17 AS builder
 WORKDIR /app

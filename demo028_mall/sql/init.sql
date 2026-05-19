@@ -132,7 +132,7 @@ CREATE TABLE `order` (
     order_no      VARCHAR(50)  NOT NULL UNIQUE COMMENT '订单编号',
     user_id       BIGINT       NOT NULL COMMENT '下单用户ID',
     total_amount  DECIMAL(10,2) NOT NULL COMMENT '订单总金额',
-    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '订单状态：10=待支付, 20=已支付, 30=已发货, 40=已完成, 50=已取消',
+    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '订单状态：10=待支付, 20=已支付, 30=已发货, 40=已完成, 50=已取消, 60=已退款',
     create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
     update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
     deleted       TINYINT      DEFAULT 0,
@@ -166,7 +166,7 @@ CREATE TABLE payment_order (
     user_id       BIGINT       NOT NULL COMMENT '用户ID',
     amount        DECIMAL(10,2) NOT NULL COMMENT '支付金额',
     channel       VARCHAR(20)  DEFAULT 'MOCK' COMMENT '支付渠道',
-    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '10=待支付,20=支付成功,30=支付失败',
+    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '10=待支付,20=支付成功,30=支付失败,40=已退款',
     callback_time DATETIME     COMMENT '回调时间',
     create_time   DATETIME     DEFAULT CURRENT_TIMESTAMP,
     update_time   DATETIME     DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -177,4 +177,4 @@ CREATE TABLE payment_order (
     INDEX idx_status (status)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='支付单表（Phase 9）';
 
-SELECT 'payment_order 表创建完成（Phase 9 - demo027_mall）' AS message;
+SELECT 'payment_order 表创建完成（Phase 9 - demo027_mall，Phase 10 新增已退款状态）' AS message;

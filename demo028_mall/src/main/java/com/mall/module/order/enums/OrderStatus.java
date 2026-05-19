@@ -30,7 +30,10 @@ public enum OrderStatus {
     COMPLETED(40, "已完成"),
 
     /** 50 - 已取消：终态，需回滚库存 */
-    CANCELLED(50, "已取消");
+    CANCELLED(50, "已取消"),
+
+    /** 60 - 已退款：终态（Phase 10 新增），已支付未发货订单退款后状态 */
+    REFUNDED(60, "已退款");
 
     private final Integer code;
     private final String description;
@@ -95,6 +98,15 @@ public enum OrderStatus {
     }
 
     /**
+     * 判断当前状态是否允许退款（Phase 10 新增）
+     * 规则：仅 20(已支付) 可退款
+     * 禁止：待支付(10)、已发货(30+)、已取消(50)、已退款(60)
+     */
+    public boolean canRefund() {
+        return this == PAID;
+    }
+
+    /**
      * 是否为终态（不允许再流转）
      * 别名 isTerminal，便于后续代码阅读
      */
@@ -104,10 +116,10 @@ public enum OrderStatus {
 
     /**
      * 是否为终态（不允许再流转）
-     * Phase 6/7 明确定义：COMPLETED 和 CANCELLED 是终态
+     * Phase 6/7/10 明确定义：COMPLETED、CANCELLED、REFUNDED 是终态
      */
     public boolean isTerminal() {
-        return this == COMPLETED || this == CANCELLED;
+        return this == COMPLETED || this == CANCELLED || this == REFUNDED;
     }
 
     @Override

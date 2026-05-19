@@ -1,8 +1,11 @@
 package com.mall.module.payment.service.impl;
 
 import com.mall.common.exception.BusinessException;
+import com.mall.common.security.LoginUser;
 import com.mall.module.order.entity.Order;
+import com.mall.module.order.entity.OrderItem;
 import com.mall.module.order.enums.OrderStatus;
+import com.mall.module.order.mapper.OrderItemMapper;
 import com.mall.module.order.mapper.OrderMapper;
 import com.mall.module.payment.dto.MockPaymentCallbackDTO;
 import com.mall.module.payment.entity.PaymentOrder;
@@ -10,6 +13,7 @@ import com.mall.module.payment.enums.PaymentStatus;
 import com.mall.module.payment.mapper.PaymentOrderMapper;
 import com.mall.module.payment.service.PaymentService;
 import com.mall.module.payment.vo.PaymentOrderVO;
+import com.mall.module.product.sku.service.SkuService;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper;
 import lombok.RequiredArgsConstructor;
@@ -20,6 +24,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 /**
  * 支付服务实现（Phase 9）
@@ -31,8 +36,10 @@ public class PaymentServiceImpl implements PaymentService {
 
     private final PaymentOrderMapper paymentOrderMapper;
     private final OrderMapper orderMapper;
+    private final OrderItemMapper orderItemMapper;
+    private final SkuService skuService;
 
-    @Value("${mall.payment.mock-callback-secret:demo027}")
+    @Value("${mall.payment.mock-callback-secret:demo028}")
     private String mockCallbackSecret;
 
     @Override
@@ -174,6 +181,92 @@ public class PaymentServiceImpl implements PaymentService {
             // 本阶段重点处理 SUCCESS 回调，失败回调仅记录日志，不做复杂业务处理
             log.info("支付回调为失败状态, paymentNo={}, payStatus={}", dto.getPaymentNo(), dto.getPayStatus());
         }
+    }
+
+    // ==================== Phase 10: 模拟退款（20 → 60，已支付未发货订单）====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void refundOrder(LoginUser operator, Long orderId) {
+        if (operator == null || operator.getUserId() == null || operator.getRole() == null) {
+            throw new BusinessException(403, "无权操作退款");
+        }
+
+        int role = operator.getRole();
+        Long currentUserId = operator.getUserId();
+
+        // 1. 查询订单
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException(403, "订单不存在或无权操作");
+        }
+
+        // 权限校验：BUYER 只能退自己的，ADMIN/SELLER 可退任意
+        if (role == 3) {  // BUYER
+            if (!order.getUserId().equals(currentUserId)) {
+                throw new BusinessException(403, "只能退款自己的订单");
+            }
+        } else if (role != 1 && role != 2) {
+            throw new BusinessException(403, "无权操作退款");
+        }
+        // ADMIN(1) 和 SELLER(2) 通过
+
+        // 2. 订单状态校验：仅 20 已支付可退款
+        if (!OrderStatus.fromCode(order.getStatus()).canRefund()) {
+            throw new BusinessException("只有已支付(未发货)订单可以退款，当前状态：" + order.getStatus());
+        }
+
+        // 3. 查询支付单
+        PaymentOrder payment = paymentOrderMapper.selectOne(
+                new LambdaQueryWrapper<PaymentOrder>()
+                        .eq(PaymentOrder::getOrderId, orderId)
+        );
+        if (payment == null) {
+            throw new BusinessException("该订单没有支付单，无法退款");
+        }
+        if (payment.getStatus() != PaymentStatus.SUCCESS.getCode()) {
+            throw new BusinessException("只有支付成功的支付单可以退款，当前支付单状态：" + payment.getStatus());
+        }
+
+        // 4. 原子条件更新：订单 20 → 60
+        int orderAffected = orderMapper.update(null,
+                new LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getStatus, OrderStatus.PAID.getCode())
+                        .set(Order::getStatus, OrderStatus.REFUNDED.getCode())
+        );
+        if (orderAffected != 1) {
+            throw new BusinessException("订单状态已变化，不能退款");
+        }
+
+        // 5. 原子条件更新：支付单 20 → 40
+        payment.setStatus(PaymentStatus.REFUNDED.getCode());
+        payment.setCallbackTime(LocalDateTime.now());  // 更新回调/处理时间
+        int paymentAffected = paymentOrderMapper.update(null,
+                new LambdaUpdateWrapper<PaymentOrder>()
+                        .eq(PaymentOrder::getOrderId, orderId)
+                        .eq(PaymentOrder::getStatus, PaymentStatus.SUCCESS.getCode())
+                        .set(PaymentOrder::getStatus, PaymentStatus.REFUNDED.getCode())
+                        .set(PaymentOrder::getCallbackTime, LocalDateTime.now())
+        );
+        if (paymentAffected != 1) {
+            throw new BusinessException("支付单状态已变化，不能退款");
+        }
+
+        // 6. 恢复库存（退款 = 交易取消）
+        List<OrderItem> items = orderItemMapper.selectList(
+                new LambdaQueryWrapper<OrderItem>()
+                        .eq(OrderItem::getOrderId, orderId)
+        );
+        if (items.isEmpty()) {
+            throw new BusinessException("订单明细为空，无法安全退款");
+        }
+        for (OrderItem item : items) {
+            skuService.restoreStock(item.getSkuId(), item.getQuantity());
+            // restoreStock 失败会抛异常 → 整个 @Transactional 回滚
+        }
+
+        log.info("退款成功，orderId={}, userId={}, operatorRole={}", orderId, order.getUserId(), role);
     }
 
     private String generatePaymentNo() {

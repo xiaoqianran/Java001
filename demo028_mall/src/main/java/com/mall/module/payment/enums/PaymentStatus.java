@@ -6,7 +6,8 @@ package com.mall.module.payment.enums;
 public enum PaymentStatus {
     PENDING(10, "待支付"),
     SUCCESS(20, "支付成功"),
-    FAILED(30, "支付失败");
+    FAILED(30, "支付失败"),
+    REFUNDED(40, "已退款");  // Phase 10 新增：已支付订单退款后状态
 
     private final Integer code;
     private final String desc;

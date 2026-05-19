@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo027_mall - 小型电商系统（Phase 9：模拟第三方支付回调与支付幂等）</name>
+    <name>demo028_mall - 小型电商系统（Phase 10：模拟退款流程）</name>
     <description>
-        demo027_mall 是小型电商系统演进的 Phase 9 版本。
-        本版本实现模拟第三方支付回调：通过支付单 + mock-callback 驱动订单 10 → 20。
-        重点教学支付幂等、回调事务边界、与订单超时自动取消的并发安全。
+        demo028_mall 是小型电商系统演进的 Phase 10 版本。
+        本版本实现模拟退款流程：已支付未发货订单 20 → 60（已退款），支付单 20 → 40，并恢复库存。
+        重点教学退款事务边界、条件更新并发安全、状态机扩展。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

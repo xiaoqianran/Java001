@@ -34,7 +34,7 @@ public class PaymentOrder {
     /** 支付渠道 */
     private String channel;
 
-    /** 支付状态 10=待支付, 20=支付成功, 30=支付失败 */
+    /** 支付状态 10=待支付, 20=支付成功, 30=支付失败, 40=已退款 */
     private Integer status;
 
     /** 回调时间 */

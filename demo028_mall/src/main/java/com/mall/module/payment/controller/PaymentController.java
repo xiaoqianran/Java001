@@ -2,6 +2,7 @@ package com.mall.module.payment.controller;
 
 import com.mall.common.exception.BusinessException;
 import com.mall.common.result.Result;
+import com.mall.common.security.LoginUser;
 import com.mall.common.security.SecurityUtils;
 import com.mall.module.payment.dto.MockPaymentCallbackDTO;
 import com.mall.module.payment.service.PaymentService;
@@ -39,11 +40,31 @@ public class PaymentController {
         return Result.success("回调处理成功", null);
     }
 
+    /**
+     * 退款接口（Phase 10）
+     * 仅支持已支付(20)未发货订单退款 → 已退款(60)
+     * 权限在 Service 层校验（BUYER 仅自己的，ADMIN/SELLER 可操作）
+     */
+    @PostMapping("/refund/{orderId}")
+    public Result<Void> refundOrder(@PathVariable Long orderId, HttpServletRequest request) {
+        LoginUser operator = getCurrentLoginUser(request);
+        paymentService.refundOrder(operator, orderId);
+        return Result.success("退款成功", null);
+    }
+
     private Long getCurrentUserId(HttpServletRequest request) {
         var loginUser = SecurityUtils.getCurrentUser(request);
         if (loginUser == null || loginUser.getUserId() == null) {
             throw new BusinessException(401, "请先登录");
         }
         return loginUser.getUserId();
+    }
+
+    private LoginUser getCurrentLoginUser(HttpServletRequest request) {
+        var loginUser = SecurityUtils.getCurrentUser(request);
+        if (loginUser == null || loginUser.getUserId() == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        return loginUser;
     }
 }

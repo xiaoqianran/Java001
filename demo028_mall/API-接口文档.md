@@ -1,7 +1,7 @@
-# demo027_mall API 接口文档（Phase 9 - 模拟第三方支付回调与支付幂等）
+# demo028_mall API 接口文档（Phase 10 - 模拟退款流程）
 
-> **项目**：demo027_mall - 小型电商系统演进版（Phase 9：模拟第三方支付回调与支付幂等）  
-> **当前版本**：Phase 1-9 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成 + 超时自动取消 + 支付回调幂等）  
+> **项目**：demo028_mall - 小型电商系统演进版（Phase 10：模拟退款流程）  
+> **当前版本**：Phase 1-10 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成 + 超时自动取消 + 支付回调幂等 + 模拟退款）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
 
@@ -474,21 +474,38 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 }
 ```
 
+### 退款接口（Phase 10 新增）
+
+`POST /api/payment/refund/{orderId}`
+
+**业务规则**：
+- 必须登录
+- BUYER 只能退自己的已支付订单，ADMIN 可退任意，SELLER 可退
+- 仅 status=20 已支付 + payment_order status=20 可退款
+- 成功后 order 20→60，payment 20→40，恢复库存
+- 条件更新 + 同一事务保证并发安全
+
+**请求**：`POST /api/payment/refund/123`（带 Token）
+
+**响应**：Result.success("退款成功", null)
+
 ---
 
-## 12. 订单与支付状态机说明（Phase 9）
+## 12. 订单与支付状态机说明（Phase 10）
 
-本阶段重点通过**支付回调**驱动订单状态流转：
+本阶段在 Phase 9 基础上扩展退款流转：
 
-- **10（待支付）→ 20（已支付）**：推荐通过 `POST /api/payment/order/{orderId}` + `POST /api/payment/mock-callback` 完成（Phase 9）
-- 旧接口 `PUT /api/order/{id}/pay`（Phase 6 简单模拟）保留但不推荐使用
-- **10（待支付）→ 50（已取消）**：支持用户主动取消 + 系统超时自动取消（Phase 5/8）
-- 超时取消与支付回调通过条件更新竞争，保证一致性
+- **10（待支付）→ 20（已支付）**：推荐通过支付单 + mock-callback（Phase 9）
+- **20（已支付）→ 60（已退款）**：Phase 10 新增，通过 `POST /api/payment/refund/{orderId}`（仅支持未发货订单，恢复库存）
+- **20（已支付）→ 30（已发货）**：Phase 7 发货
+- **10（待支付）→ 50（已取消）**：Phase 5/8 支持
 
-完整状态机设计、支付幂等、回调事务边界详见 [Phase9.md](./Phase9.md)。
+退款与发货通过条件更新竞争（20→60 与 20→30 互斥），保证一致性。
+
+完整状态机设计、退款事务边界、并发安全详见 [Phase10.md](./Phase10.md)。
 
 ---
 
 **文档生成时间**：2026-05-19  
-**验证状态**：demo027_mall Phase 9 模拟第三方支付回调与支付幂等已完成，mvn package 通过，文档已自洽。
-本阶段新增支付模块 + 支付单表 + 模拟支付回调流程，强调幂等性与事务边界。
+**验证状态**：demo028_mall Phase 10 模拟退款流程已完成，mvn package 通过，文档已自洽。
+本阶段新增模拟退款流程：已支付未发货订单 20→60，支付单 20→40，并在同一事务内恢复库存，强调退款事务边界与条件更新并发安全。

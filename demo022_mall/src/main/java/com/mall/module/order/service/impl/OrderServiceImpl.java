@@ -50,71 +50,97 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException("订单商品不能为空");
         }
 
-        List<Long> skuIds = dto.getItems().stream()
-                .map(OrderItemDTO::getSkuId)
-                .collect(Collectors.toList());
-
-        // 1. 批量查询 SKU（避免 N+1）
-        List<Sku> skuList = skuService.listByIds(skuIds);
-        if (skuList.size() != skuIds.size()) {
-            throw new BusinessException("部分商品不存在");
+        // 1. 先合并同一 SKU 的数量（避免重复下单同一商品导致误判）
+        java.util.Map<Long, Integer> skuQuantityMap = new java.util.HashMap<>();
+        for (OrderItemDTO item : dto.getItems()) {
+            if (item.getQuantity() == null || item.getQuantity() < 1) {
+                throw new BusinessException("商品数量必须大于0");
+            }
+            skuQuantityMap.merge(item.getSkuId(), item.getQuantity(), Integer::sum);
         }
 
-        // 2. 校验 + 扣减库存 + 计算总金额
+        List<Long> mergedSkuIds = new ArrayList<>(skuQuantityMap.keySet());
+
+        // 2. 批量查询 SKU
+        List<Sku> skuList = skuService.listByIds(mergedSkuIds);
+        if (skuList.size() != mergedSkuIds.size()) {
+            throw new BusinessException("部分商品不存在或已下架");
+        }
+
+        // 3. 校验 + 扣减库存 + 构建快照 + 计算金额
         BigDecimal totalAmount = BigDecimal.ZERO;
         List<OrderItem> orderItems = new ArrayList<>();
 
-        for (OrderItemDTO itemDTO : dto.getItems()) {
-            Sku sku = skuList.stream()
-                    .filter(s -> s.getId().equals(itemDTO.getSkuId()))
-                    .findFirst()
-                    .orElseThrow(() -> new BusinessException("商品不存在"));
+        for (Sku sku : skuList) {
+            Integer quantity = skuQuantityMap.get(sku.getId());
 
             if (sku.getStatus() != 1) {
                 throw new BusinessException("商品已下架：" + sku.getSkuCode());
             }
 
-            // 调用已有乐观锁扣库存方法（重要！）
-            boolean success = skuService.reduceStock(sku.getId(), itemDTO.getQuantity());
-            if (!success) {
-                throw new BusinessException("库存不足或扣减失败，请重试");
+            boolean deductSuccess = skuService.reduceStock(sku.getId(), quantity);
+            if (!deductSuccess) {
+                throw new BusinessException("库存不足，商品：" + sku.getSkuCode());
             }
 
-            // 累计金额
-            BigDecimal itemTotal = sku.getPrice().multiply(new BigDecimal(itemDTO.getQuantity()));
+            BigDecimal itemTotal = sku.getPrice().multiply(new BigDecimal(quantity));
             totalAmount = totalAmount.add(itemTotal);
 
-            // 构建订单项快照
             OrderItem orderItem = new OrderItem();
             orderItem.setSkuId(sku.getId());
-            orderItem.setSkuName(sku.getSkuCode()); // 简化，可后续关联 SPU 名称
-            orderItem.setSkuSpecs(sku.getSpecs());
+            orderItem.setSkuName(sku.getSkuCode());
+            orderItem.setSkuSpecs(sku.getSpecs() != null ? sku.getSpecs() : "{}");
             orderItem.setPrice(sku.getPrice());
-            orderItem.setQuantity(itemDTO.getQuantity());
+            orderItem.setQuantity(quantity);
             orderItems.add(orderItem);
         }
 
-        // 3. 生成订单号（简单实现，教学阶段够用）
-        String orderNo = generateOrderNo(userId);
+        // 4. 生成订单号（带重试防重复）
+        String orderNo = generateOrderNoWithRetry(userId);
 
-        // 4. 保存订单主表
+        // 5. 保存订单主表
         Order order = new Order();
         order.setOrderNo(orderNo);
         order.setUserId(userId);
         order.setTotalAmount(totalAmount);
-        order.setStatus(10); // 待支付
-        orderMapper.insert(order);
-
-        // 5. 批量保存订单项
-        for (OrderItem item : orderItems) {
-            item.setOrderId(order.getId());
-            orderItemMapper.insert(item);
+        order.setStatus(10);
+        int orderInsert = orderMapper.insert(order);
+        if (orderInsert <= 0) {
+            throw new BusinessException("创建订单失败");
         }
 
-        // 6. 清空购物车中已下单的商品（同一事务内）
-        cartService.removeCartItems(userId, skuIds);
+        // 6. 保存订单明细
+        for (OrderItem item : orderItems) {
+            item.setOrderId(order.getId());
+            int itemInsert = orderItemMapper.insert(item);
+            if (itemInsert <= 0) {
+                throw new BusinessException("保存订单明细失败");
+            }
+        }
+
+        // 7. 清空购物车（同一事务）
+        boolean cartClear = cartService.removeCartItems(userId, mergedSkuIds);
+        if (!cartClear) {
+            // 购物车清空失败不一定致命，但按严格一致性仍抛出
+            throw new BusinessException("清空购物车失败");
+        }
 
         return order.getId();
+    }
+
+    private String generateOrderNoWithRetry(Long userId) {
+        for (int i = 0; i < 3; i++) {
+            String orderNo = generateOrderNo(userId);
+            // 简单判断是否已存在（生产环境可用唯一索引 + 捕获 DuplicateKeyException）
+            Long count = orderMapper.selectCount(
+                    new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<Order>()
+                            .eq(Order::getOrderNo, orderNo)
+            );
+            if (count == 0) {
+                return orderNo;
+            }
+        }
+        throw new BusinessException("生成订单号失败，请稍后重试");
     }
 
     /**

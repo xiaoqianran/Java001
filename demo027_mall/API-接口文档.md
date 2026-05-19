@@ -438,5 +438,50 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 ---
 
 **文档生成时间**：2026-05-19  
+### 创建支付单（Phase 9 新增）
+`POST /api/payment/order/{orderId}`
+
+**业务规则**：
+- 必须登录
+- 只能为自己的待支付订单创建支付单
+- 幂等：已存在待支付支付单则直接返回
+- 已支付/已取消订单不能创建
+
+**成功响应**：
+```json
+{
+  "success": true,
+  "code": 200,
+  "message": "操作成功",
+  "data": {
+    "id": 1,
+    "paymentNo": "PAY202605190001",
+    "orderId": 1,
+    "amount": 199.00,
+    "status": 10
+  }
+}
+```
+
+### 模拟支付回调（Phase 9 新增）
+`POST /api/payment/mock-callback`
+
+**说明**：
+- 模拟第三方支付平台异步回调
+- 不要求登录，但必须携带正确 `mockSign`
+- 支持幂等：重复 SUCCESS 回调不会重复修改订单
+- 已取消订单不会被支付成功回调改状态
+
+**请求示例**：
+```json
+{
+  "paymentNo": "PAY202605190001",
+  "orderId": 1,
+  "paidAmount": 199.00,
+  "payStatus": "SUCCESS",
+  "mockSign": "demo027"
+}
+```
+
 **验证状态**：demo027_mall Phase 9 模拟第三方支付回调与支付幂等已完成，mvn package 通过，文档已自洽。
 本阶段新增支付模块 + 支付单表 + 模拟支付回调流程，强调幂等性与事务边界。

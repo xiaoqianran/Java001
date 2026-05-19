@@ -47,7 +47,7 @@
 ## 快速启动
 
 ```bash
-cd demo024_mall
+cd demo025_mall
 docker compose up -d
 mvn clean spring-boot:run
 ```
@@ -58,17 +58,20 @@ mvn clean spring-boot:run
 
 ---
 
-## 新增接口（Phase 6）
+## 新增接口（Phase 7）
 
-- `PUT /api/order/{id}/pay` —— 模拟支付成功（仅待支付订单 10 → 20）
+- `PUT /api/order/{id}/pay` —— 模拟支付成功（10 → 20）
+- `PUT /api/order/{id}/ship` —— 发货（20 → 30，ADMIN/SELLER 操作）
+- `PUT /api/order/{id}/complete` —— 确认完成（30 → 40）
 
 ---
 
 ## 状态流转
 
-- 10（待支付）→ 50（已取消）：Phase 5 已实现（取消订单）
-- 10（待支付）→ 20（已支付）：Phase 6 新增（模拟支付）
-- 后续演进建议：发货（20 → 30）/ 完成（30 → 40）或接入真实支付
+- 10（待支付）→ 50（已取消）：Phase 5 已实现
+- 10（待支付）→ 20（已支付）：Phase 6 已实现
+- 20（已支付）→ 30（已发货）：Phase 7 新增（发货）
+- 30（已发货）→ 40（已完成）：Phase 7 新增（确认收货/完成）
 
 ---
 
@@ -78,8 +81,9 @@ mvn clean spring-boot:run
 - [Phase4.md](./Phase4.md)（订单基础闭环）
 - [Phase5.md](./Phase5.md)（状态机 + 取消订单）
 - [Phase6.md](./Phase6.md)（简单支付模拟）
+- [Phase7.md](./Phase7.md)（发货与完成状态流转）
 - [API-接口文档.md](./API-接口文档.md)
 
-**demo024_mall Phase 6 简单支付模拟已完成。**
+**demo025_mall Phase 7 订单发货与完成状态流转已完成。**
 
-下一步建议：实现发货/完成状态流转，或接入真实支付网关。
+下一步建议：订单超时自动取消、支付回调模拟、真实物流/退款（三者后续择一）。

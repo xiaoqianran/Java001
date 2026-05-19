@@ -46,4 +46,16 @@ public interface OrderService {
      * @param orderId 订单ID
      */
     void cancelOrder(Long userId, Long orderId);
+
+    /**
+     * 模拟支付订单（Phase 6）
+     *
+     * 规则：
+     * - 仅 status=10 待支付 可支付
+     * - 必须是本人订单
+     * - 支付成功后状态 10 → 20
+     * - 使用原子条件更新防止并发重复支付
+     * - 整个操作在同一个 @Transactional 中
+     */
+    void payOrder(Long userId, Long orderId);
 }

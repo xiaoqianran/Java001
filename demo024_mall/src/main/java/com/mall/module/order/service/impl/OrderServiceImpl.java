@@ -276,4 +276,29 @@ public class OrderServiceImpl implements OrderService {
 
         // 3. 全部成功，事务提交。状态=50 + 库存已回滚
     }
+
+    // ==================== Phase 6: 模拟支付（10 → 20）====================
+
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void payOrder(Long userId, Long orderId) {
+        // 1. 原子条件更新：只有 status=10 时才能成功把状态改成 20
+        //    防止两个并发支付请求都成功
+        int affected = orderMapper.update(null,
+                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                        .eq(Order::getId, orderId)
+                        .eq(Order::getUserId, userId)
+                        .eq(Order::getStatus, OrderStatus.PENDING_PAYMENT.getCode())
+                        .set(Order::getStatus, OrderStatus.PAID.getCode())
+        );
+
+        if (affected != 1) {
+            // 0 行说明：订单不存在、不是本人、状态已不是 10（已支付/已取消等）
+            throw new BusinessException("订单状态已变化，不能支付");
+        }
+
+        // 2. 支付成功（状态已原子变为 20）
+        //    注意：本阶段不再扣库存（创建订单时已扣），不再清购物车
+        //    后续可在此扩展：记录支付流水、发送支付成功事件等
+    }
 }

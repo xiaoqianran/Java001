@@ -72,6 +72,22 @@ public class OrderController {
         return Result.success("取消成功", null);
     }
 
+    /**
+     * 模拟支付订单（Phase 6）
+     *
+     * 安全与业务规则：
+     * - 必须登录
+     * - 只能支付自己的订单
+     * - 仅 status=10 待支付可支付
+     * - 使用原子条件更新防并发重复支付
+     */
+    @PutMapping("/{id}/pay")
+    public Result<Void> payOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long userId = getCurrentUserId(request);
+        orderService.payOrder(userId, id);
+        return Result.success("支付成功", null);
+    }
+
     private Long getCurrentUserId(HttpServletRequest request) {
         var loginUser = SecurityUtils.getCurrentUser(request);
         if (loginUser == null || loginUser.getUserId() == null) {

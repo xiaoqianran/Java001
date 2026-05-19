@@ -1,19 +1,19 @@
 package com.mall.module.order.enums;
 
+import com.mall.common.exception.BusinessException;
 import java.util.Arrays;
 
 /**
- * 订单状态枚举（Phase 5 - demo023_mall 状态机核心）
+ * 订单状态枚举（Phase 6 - demo024_mall 支付模拟核心）
  *
  * 设计要点：
  * - 状态码与数据库一致：10/20/30/40/50
- * - 提供 fromCode 工厂方法，避免魔法数字散落
- * - 封装状态流转规则（canCancel 等），集中管理而非散落在 Controller/Service 各处
- * - 终态判断：已完成/已取消不允许再变更
+ * - 提供 fromCode 工厂方法（非法 code 抛 BusinessException）
+ * - 封装状态流转规则（canCancel、canPay、isTerminal），集中管理
  *
  * 教学价值：
- * - 用枚举替代散落的 if/数字判断，提升可读性与可维护性
- * - 为未来完整状态机（支付、发货、完成）预留扩展点
+ * - 状态机规则全部收敛到枚举
+ * - 为后续真实支付、发货、完成流转做准备
  */
 public enum OrderStatus {
 
@@ -50,15 +50,16 @@ public enum OrderStatus {
 
     /**
      * 根据数据库 code 反查枚举（推荐使用）
+     * 非法 code 抛 BusinessException，便于上层统一异常处理
      */
     public static OrderStatus fromCode(Integer code) {
         if (code == null) {
-            return null;
+            throw new BusinessException("订单状态码不能为空");
         }
         return Arrays.stream(values())
                 .filter(status -> status.code.equals(code))
                 .findFirst()
-                .orElseThrow(() -> new IllegalArgumentException("未知的订单状态码: " + code));
+                .orElseThrow(() -> new BusinessException("未知的订单状态码: " + code));
     }
 
     /**
@@ -70,9 +71,26 @@ public enum OrderStatus {
     }
 
     /**
+     * 判断当前状态是否允许支付
+     * 规则：仅 10(待支付) 可支付（Phase 6 新增）
+     */
+    public boolean canPay() {
+        return this == PENDING_PAYMENT;
+    }
+
+    /**
      * 是否为终态（不允许再流转）
+     * 别名 isTerminal，便于后续代码阅读
      */
     public boolean isFinalState() {
+        return isTerminal();
+    }
+
+    /**
+     * 是否为终态（不允许再流转）
+     * Phase 6 明确定义：COMPLETED 和 CANCELLED 是终态
+     */
+    public boolean isTerminal() {
         return this == COMPLETED || this == CANCELLED;
     }
 

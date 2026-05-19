@@ -506,6 +506,60 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 
 ---
 
+---
+
+## 13. 退款申请与审核接口（Phase 11 新增）
+
+### 13.1 买家提交退款申请
+
+`POST /api/refund/apply/{orderId}`
+
+**说明**：买家对「已支付未发货」(20) 的自己的订单发起退款申请，附原因。仅创建申请记录，不立即退款。
+
+**请求 Body**:
+```json
+{ "reason": "商品与描述不符" }
+```
+
+**响应**: `Result.success(申请ID)`
+
+### 13.2 买家查看我的退款申请
+
+`GET /api/refund/my`
+
+**响应**: `Result.success([ {id, orderId, reason, status, statusDesc, applyTime, ...} ])`
+
+### 13.3 管理员查看待审核申请
+
+`GET /api/refund`
+
+**权限**：ADMIN(1) / SELLER(2)
+
+**响应**：待审核列表
+
+### 13.4 管理员审核通过
+
+`POST /api/refund/{id}/approve?remark=xxx`
+
+- 校验申请 status=10
+- 调用退款执行（订单→60、支付单→40、恢复库存）
+- 更新申请 status=20 + 审核信息
+
+### 13.5 管理员拒绝申请
+
+`POST /api/refund/{id}/reject?reason=xxx`
+
+- 仅更新申请 status=30，不改变订单状态
+
+**业务规则**：
+- 同一订单在有 status=10 申请时不可重复申请
+- 申请与真正退款执行分离（审核通过才触发）
+- 完全复用 Phase 10 的并发安全退款逻辑
+
+完整设计见 [Phase11.md](./Phase11.md)。
+
+---
+
 **文档生成时间**：2026-05-19  
 **验证状态**：demo029_mall Phase 10 基线完整继承，Phase 11 退款申请与审核流程开发中，mvn package 通过，文档持续更新中。
-本阶段将新增退款申请表与审核工作流：买家申请 → 管理员审核通过后执行退款（复用 Phase 10 核心逻辑 + 事务一致性）。
+本阶段新增 refund_order 表 + 申请/审核工作流：买家申请 → 管理员审核通过后执行退款（复用 Phase 10 核心逻辑 + 事务一致性）。

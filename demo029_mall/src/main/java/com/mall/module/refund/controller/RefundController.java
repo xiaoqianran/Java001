@@ -80,13 +80,10 @@ public class RefundController {
      */
     @PostMapping("/{id}/reject")
     public Result<Void> reject(@PathVariable Long id,
-                               @RequestBody(required = false) java.util.Map<String, String> body,
+                               @RequestParam String reason,
                                HttpServletRequest request) {
         LoginUser admin = SecurityUtils.getCurrentUser(request);
-        String reason = body != null ? body.get("reason") : null;
         refundService.rejectRefund(admin, id, reason);
         return Result.success(null);
     }
-
-    // 注：reject 使用 Map 接收 body 仅为简单示例，生产可定义专属 RejectDTO
 }

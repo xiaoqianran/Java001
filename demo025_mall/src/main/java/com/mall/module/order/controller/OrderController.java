@@ -3,6 +3,7 @@ package com.mall.module.order.controller;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mall.common.exception.BusinessException;
 import com.mall.common.result.Result;
+import com.mall.common.security.LoginUser;
 import com.mall.common.security.SecurityUtils;
 import com.mall.module.order.dto.OrderCreateDTO;
 import com.mall.module.order.service.OrderService;
@@ -90,23 +91,23 @@ public class OrderController {
 
     /**
      * 发货订单（Phase 7）
-     * 仅 ADMIN / SELLER 可操作
+     * 仅 ADMIN / SELLER 可操作（权限判断在 Service 层）
      */
     @PutMapping("/{id}/ship")
     public Result<Void> shipOrder(@PathVariable Long id, HttpServletRequest request) {
-        Long operatorUserId = getCurrentUserId(request);
-        orderService.shipOrder(operatorUserId, id);
+        LoginUser operator = getCurrentLoginUser(request);
+        orderService.shipOrder(operator, id);
         return Result.success("发货成功", null);
     }
 
     /**
      * 完成订单（Phase 7）
-     * BUYER 只能完成自己的，ADMIN/SELLER 相对宽松
+     * BUYER 只能完成自己的，ADMIN/SELLER 可完成已发货订单（权限判断在 Service 层）
      */
     @PutMapping("/{id}/complete")
     public Result<Void> completeOrder(@PathVariable Long id, HttpServletRequest request) {
-        Long operatorUserId = getCurrentUserId(request);
-        orderService.completeOrder(operatorUserId, id);
+        LoginUser operator = getCurrentLoginUser(request);
+        orderService.completeOrder(operator, id);
         return Result.success("确认完成成功", null);
     }
 
@@ -116,5 +117,13 @@ public class OrderController {
             throw new BusinessException(401, "请先登录");
         }
         return loginUser.getUserId();
+    }
+
+    private LoginUser getCurrentLoginUser(HttpServletRequest request) {
+        var loginUser = SecurityUtils.getCurrentUser(request);
+        if (loginUser == null || loginUser.getUserId() == null) {
+            throw new BusinessException(401, "请先登录");
+        }
+        return loginUser;
     }
 }

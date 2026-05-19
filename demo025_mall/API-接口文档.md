@@ -384,7 +384,7 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 `PUT /api/order/{id}/ship`
 
 **业务规则**：
-- 仅 ADMIN 或 SELLER 可操作
+- 仅 ADMIN(1) 或 SELLER(2) 可操作，**BUYER(3) 无权发货**
 - 仅 `status=20`（已支付）的订单可以发货
 - 成功后状态变为 30（已发货）
 - 使用原子条件更新防止并发
@@ -403,9 +403,9 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 `PUT /api/order/{id}/complete`
 
 **业务规则**：
-- BUYER 只能完成自己的订单
-- ADMIN 可完成任意订单
-- SELLER 可完成已发货的订单
+- BUYER 只能完成**自己的**已发货订单
+- ADMIN 可完成任意已发货订单
+- SELLER 可完成已发货订单
 - 仅 `status=30`（已发货）的订单可以完成
 - 成功后状态变为 40（已完成）
 - 使用原子条件更新防止并发

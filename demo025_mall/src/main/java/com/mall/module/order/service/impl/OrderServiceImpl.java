@@ -3,6 +3,7 @@ package com.mall.module.order.service.impl;
 import com.mall.common.exception.BusinessException;
 import com.mall.module.cart.service.CartService;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mall.common.security.LoginUser;
 import com.mall.module.order.dto.OrderCreateDTO;
 import com.mall.module.order.dto.OrderItemDTO;
 import com.mall.module.order.entity.Order;
@@ -306,12 +307,18 @@ public class OrderServiceImpl implements OrderService {
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void shipOrder(Long operatorUserId, Long orderId) {
-        // 1. 权限校验：仅 ADMIN 或 SELLER 可发货
-        // 这里简化处理，实际项目中应从 DB 或 SecurityContext 获取角色
-        // 假设调用方已通过 Controller 层初步校验，此处再做一次状态校验
+    public void shipOrder(LoginUser operator, Long orderId) {
+        if (operator == null || operator.getRole() == null) {
+            throw new BusinessException(403, "无权发货");
+        }
 
-        // 2. 原子条件更新：只有 status=20 时才能发货
+        int role = operator.getRole();
+        // 仅 ADMIN(1) 或 SELLER(2) 可发货，BUYER(3) 禁止
+        if (role != 1 && role != 2) {
+            throw new BusinessException(403, "无权发货");
+        }
+
+        // 原子条件更新：只有 status=20 时才能发货
         int affected = orderMapper.update(null,
                 new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
                         .eq(Order::getId, orderId)
@@ -322,15 +329,15 @@ public class OrderServiceImpl implements OrderService {
         if (affected != 1) {
             throw new BusinessException("订单状态已变化，不能发货");
         }
-
-        // 发货成功，状态已变为 30
-        // 后续可扩展：生成物流单、通知买家等
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void completeOrder(Long operatorUserId, Long orderId) {
-        // 1. 先查询订单，判断当前状态和权限
+    public void completeOrder(LoginUser operator, Long orderId) {
+        if (operator == null || operator.getRole() == null) {
+            throw new BusinessException(403, "无权完成订单");
+        }
+
         Order order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new BusinessException(403, "订单不存在或无权操作");
@@ -340,22 +347,32 @@ public class OrderServiceImpl implements OrderService {
             throw new BusinessException("只有已发货的订单可以完成，当前状态：" + order.getStatus());
         }
 
-        // 2. 权限校验（简化版）
-        // BUYER 只能完成自己的订单；ADMIN/SELLER 相对宽松
-        // 实际项目中应更严格，此处演示核心逻辑
+        int role = operator.getRole();
+        int affected;
 
-        // 3. 原子条件更新：只有 status=30 时才能完成
-        int affected = orderMapper.update(null,
-                new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
-                        .eq(Order::getId, orderId)
-                        .eq(Order::getStatus, OrderStatus.SHIPPED.getCode())
-                        .set(Order::getStatus, OrderStatus.COMPLETED.getCode())
-        );
+        if (role == 1 || role == 2) {
+            // ADMIN 或 SELLER：可以完成任意已发货订单
+            affected = orderMapper.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                            .eq(Order::getId, orderId)
+                            .eq(Order::getStatus, OrderStatus.SHIPPED.getCode())
+                            .set(Order::getStatus, OrderStatus.COMPLETED.getCode())
+            );
+        } else if (role == 3) {
+            // BUYER：只能完成自己的已发货订单
+            affected = orderMapper.update(null,
+                    new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<Order>()
+                            .eq(Order::getId, orderId)
+                            .eq(Order::getUserId, operator.getUserId())
+                            .eq(Order::getStatus, OrderStatus.SHIPPED.getCode())
+                            .set(Order::getStatus, OrderStatus.COMPLETED.getCode())
+            );
+        } else {
+            throw new BusinessException(403, "无权完成订单");
+        }
 
         if (affected != 1) {
             throw new BusinessException("订单状态已变化，不能完成");
         }
-
-        // 完成成功，状态变为 40
     }
 }

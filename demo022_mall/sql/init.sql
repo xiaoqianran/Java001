@@ -120,3 +120,38 @@ CREATE TABLE cart (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='购物车表';
 
 SELECT 'cart 表创建完成（Phase 3 Step 1）' AS message;
+
+-- ============================================================
+-- Phase 4: 订单系统（demo022_mall 开始开发）
+-- ============================================================
+
+-- 订单主表
+DROP TABLE IF EXISTS `order`;
+CREATE TABLE `order` (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_no      VARCHAR(50)  NOT NULL UNIQUE COMMENT '订单编号',
+    user_id       BIGINT       NOT NULL COMMENT '下单用户ID',
+    total_amount  DECIMAL(10,2) NOT NULL COMMENT '订单总金额',
+    status        TINYINT      NOT NULL DEFAULT 10 COMMENT '订单状态：10=待支付, 20=已支付, 30=已发货, 40=已完成, 50=已取消',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    update_time   DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    deleted       TINYINT      DEFAULT 0,
+    UNIQUE KEY uk_order_no (order_no),
+    INDEX idx_user_id (user_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单主表（Phase 4）';
+
+-- 订单明细表
+DROP TABLE IF EXISTS order_item;
+CREATE TABLE order_item (
+    id            BIGINT AUTO_INCREMENT PRIMARY KEY,
+    order_id      BIGINT       NOT NULL COMMENT '订单ID',
+    sku_id        BIGINT       NOT NULL COMMENT 'SKU ID',
+    sku_name      VARCHAR(200) COMMENT '商品名称快照',
+    sku_specs     JSON         COMMENT '规格快照',
+    price         DECIMAL(10,2) NOT NULL COMMENT '下单时单价',
+    quantity      INT          NOT NULL COMMENT '购买数量',
+    create_time   DATETIME DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_order_id (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='订单明细表（Phase 4）';
+
+SELECT 'order & order_item 表创建完成（Phase 4 - demo022_mall）' AS message;

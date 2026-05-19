@@ -88,6 +88,28 @@ public class OrderController {
         return Result.success("支付成功", null);
     }
 
+    /**
+     * 发货订单（Phase 7）
+     * 仅 ADMIN / SELLER 可操作
+     */
+    @PutMapping("/{id}/ship")
+    public Result<Void> shipOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long operatorUserId = getCurrentUserId(request);
+        orderService.shipOrder(operatorUserId, id);
+        return Result.success("发货成功", null);
+    }
+
+    /**
+     * 完成订单（Phase 7）
+     * BUYER 只能完成自己的，ADMIN/SELLER 相对宽松
+     */
+    @PutMapping("/{id}/complete")
+    public Result<Void> completeOrder(@PathVariable Long id, HttpServletRequest request) {
+        Long operatorUserId = getCurrentUserId(request);
+        orderService.completeOrder(operatorUserId, id);
+        return Result.success("确认完成成功", null);
+    }
+
     private Long getCurrentUserId(HttpServletRequest request) {
         var loginUser = SecurityUtils.getCurrentUser(request);
         if (loginUser == null || loginUser.getUserId() == null) {

@@ -75,6 +75,10 @@ mall:
     # 每次扫描最多处理的数量
     timeout-batch-size: 100
 
+  payment:
+    # 模拟支付回调密钥（Phase 9）
+    mock-callback-secret: demo027
+
 # ==================== JWT 配置（Phase 1 Step 3 引入） ====================
 jwt:
   secret: mall-secret-key-change-in-production-2026

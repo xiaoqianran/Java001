@@ -44,11 +44,11 @@
 
 ```bash
 # 1. 启动基础设施（MySQL + Redis）
-cd demo021_mall
+cd demo022_mall
 docker compose up -d
 
 # 2. 运行应用
-cd demo021_mall
+cd demo022_mall
 mvn clean spring-boot:run
 ```
 

@@ -129,8 +129,11 @@ mvn clean compile exec:java
 | 版本           | 完成内容                        | 文档 |
 |----------------|---------------------------------|------|
 | demo021_mall   | Phase 1-3（用户+JWT+商品三级模型+购物车） | [README](./demo021_mall/README.md) + [Phase1-3.md](./demo021_mall/Phase1-3.md) |
-| demo022_mall   | 规划中：订单模块                 | 待创建 |
-| ...            | ...                             | ... |
+| demo022_mall   | Phase 4（订单基础闭环 + 事务扣库存） | [README](./demo022_mall/README.md) |
+| demo023_mall   | Phase 5（订单状态机 + 取消）     | [README](./demo023_mall/README.md) |
+| ...            | ...                              | ... |
+| demo029_mall   | Phase 11（退款申请与审核流程）   | [README](./demo029_mall/README.md) + [Phase11.md](./demo029_mall/Phase11.md) |
+| demo030_mall   | Phase 12（部分退款与退款金额校验）**已完成** | [README](./demo030_mall/README.md) + [Phase12.md](./demo030_mall/Phase12.md) |
 
 **强烈建议**：学习 demo021_mall 时，重点阅读 `Phase1-3.md`，它详细记录了每一阶段的教学决策。
 
@@ -145,11 +148,11 @@ mvn clean compile exec:java
 ├── README.md
 ├── sql/                      # 学生系统初始化脚本（demo001~demo020 使用）
 ├── demo001/ ~ demo020/       # 学生管理系统教学系列（打基础）
-├── demo021_mall/             # 小型电商系统演进起点（Phase 1-3 已完成）
-│   ├── README.md             # 本版本总览
-│   └── Phase1-3.md           # 详细阶段演进记录（必读）
-├── demo022_mall/             # （未来）订单系统版本
-└── ...
+├── demo021_mall/             # Phase 1-3（用户+商品+购物车）
+├── demo022_mall/ ~ demo028_mall/
+├── demo029_mall/             # Phase 11（退款申请与审核）
+├── demo030_mall/             # Phase 12（部分退款金额校验）**已完成**
+└── ... (持续演进)
 ```
 
 ---
@@ -160,7 +163,7 @@ mvn clean compile exec:java
 
 **已有一定基础、想直接学真实项目**：可以从 `demo016` 或 `demo020` 快速过一遍基础设施，然后直接进入 `demo021_mall` 系列。
 
-**想看「一步一步怎么从 0 做到一个可用电商系统」**：全程跟随 demo021_mall → demo022_mall → ... 的演进过程，对比相邻版本的 diff 是最高效的学习方式。
+**想看「一步一步怎么从 0 做到一个可用电商系统」**：全程跟随 demo021_mall → ... → demo030_mall（Phase 12 部分退款金额校验已完成），每个版本的 PhaseX.md 都是最佳学习材料。
 
 ---
 

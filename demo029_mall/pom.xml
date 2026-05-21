@@ -16,11 +16,11 @@
     <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>demo028_mall - 小型电商系统（Phase 10：模拟退款流程）</name>
+    <name>demo029_mall - 小型电商系统（Phase 11：退款申请与审核流程）</name>
     <description>
-        demo028_mall 是小型电商系统演进的 Phase 10 版本。
-        本版本实现模拟退款流程：已支付未发货订单 20 → 60（已退款），支付单 20 → 40，并恢复库存。
-        重点教学退款事务边界、条件更新并发安全、状态机扩展。
+        demo029_mall 是小型电商系统演进的 Phase 11 版本。
+        本版本实现退款申请与审核流程：买家提交退款申请 → 管理员/卖家审核通过/拒绝 → 通过后执行退款（复用 Phase 10 核心）。
+        强调申请与执行分离、审批流、并发唯一约束、权限边界。
         严格遵循「每一步只做一个重点变化」的教学原则。
     </description>
 

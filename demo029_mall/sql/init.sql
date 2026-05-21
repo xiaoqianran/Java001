@@ -185,7 +185,7 @@ SELECT 'payment_order 表创建完成（Phase 9 - demo027_mall，Phase 10 新增
 -- 设计要点：
 -- - 独立于 payment_order，记录“申请事实 + 审核结果”
 -- - status: 10=待审核, 20=已通过(已执行退款), 30=已拒绝
--- - 同一订单在非终态申请下最多一个进行中申请（通过唯一约束或业务校验）
+-- - Phase 11 简化为一个订单只能有一条退款申请记录（UNIQUE KEY uk_order_id），被拒绝后也不再重复申请
 -- - 审核通过后才调用退款执行逻辑（订单/支付单状态变更 + 库存恢复）
 -- ============================================================
 
@@ -205,7 +205,8 @@ CREATE TABLE refund_order (
     deleted       TINYINT      DEFAULT 0 COMMENT '逻辑删除',
     INDEX idx_user_id (user_id),
     INDEX idx_status (status),
-    INDEX idx_order_id (order_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款申请单（Phase 11）';
+    INDEX idx_order_id (order_id),
+    UNIQUE KEY uk_order_id (order_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='退款申请单（Phase 11，一订单一申请记录）';
 
 SELECT 'refund_order 表创建完成（Phase 11 - demo029_mall 退款申请与审核流程）' AS message;

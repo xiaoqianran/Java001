@@ -41,9 +41,9 @@ public class PaymentController {
     }
 
     /**
-     * 退款接口（Phase 10）
+     * 退款接口（Phase 10 历史接口 / Phase 11 起不推荐，BUYER 不可直接调用）
      * 仅支持已支付(20)未发货订单退款 → 已退款(60)
-     * 权限在 Service 层校验（BUYER 仅自己的，ADMIN/SELLER 可操作）
+     * 仅 ADMIN/SELLER 或内部审核流程可调用（BUYER 请走 /api/refund/apply + 审核）
      */
     @PostMapping("/refund/{orderId}")
     public Result<Void> refundOrder(@PathVariable Long orderId, HttpServletRequest request) {

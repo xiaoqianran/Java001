@@ -66,14 +66,13 @@ public class RefundServiceImpl implements RefundService {
             throw new BusinessException("只有已支付(20)且未发货的订单可以申请退款，当前状态：" + order.getStatus());
         }
 
-        // 2. 校验是否已有待审核申请（防止重复申请）
-        long pendingCount = refundOrderMapper.selectCount(
+        // 2. 校验是否已有任何退款申请（本阶段一订单只允许一条记录，拒绝后不重复申请；用唯一约束防并发）
+        long existsCount = refundOrderMapper.selectCount(
                 new LambdaQueryWrapper<RefundOrder>()
                         .eq(RefundOrder::getOrderId, orderId)
-                        .eq(RefundOrder::getStatus, 10)
         );
-        if (pendingCount > 0) {
-            throw new BusinessException("该订单已存在待审核的退款申请，请勿重复提交");
+        if (existsCount > 0) {
+            throw new BusinessException("该订单已存在退款申请，请勿重复提交");
         }
 
         // 3. 创建申请记录（status=10 待审核）
@@ -84,7 +83,11 @@ public class RefundServiceImpl implements RefundService {
         apply.setStatus(10); // 待审核
         apply.setApplyTime(LocalDateTime.now());
 
-        refundOrderMapper.insert(apply);
+        try {
+            refundOrderMapper.insert(apply);
+        } catch (org.springframework.dao.DuplicateKeyException e) {
+            throw new BusinessException("该订单已存在退款申请，请勿重复提交");
+        }
 
         log.info("退款申请创建成功，refundId={}, orderId={}, userId={}", apply.getId(), orderId, buyer.getUserId());
         return apply.getId();
@@ -142,17 +145,8 @@ public class RefundServiceImpl implements RefundService {
             throw new BusinessException("只能审核状态为【待审核】的申请，当前状态：" + refund.getStatus());
         }
 
-        // 执行真正退款（复用 PaymentService 的成熟事务逻辑，传入 admin 作为操作人）
-        // refundOrder 方法内部会再次校验订单状态与支付单状态，并做条件更新 + 库存恢复
-        paymentService.refundOrder(admin, refund.getOrderId());
-
-        // 更新申请状态为已通过
-        refund.setStatus(20);
-        refund.setReviewerId(admin.getUserId());
-        refund.setReviewTime(LocalDateTime.now());
-        refund.setReviewRemark(remark != null ? remark.trim() : "审核通过，退款已执行");
-
-        // 条件更新防护（防止并发审核）
+        // 先条件更新 refund_order 状态为已通过（抢占审核权），防止并发审核人同时通过
+        // 影响行数 !=1 说明状态已变（被他人抢占或异常），直接失败，不执行退款
         int affected = refundOrderMapper.update(null,
                 new LambdaUpdateWrapper<RefundOrder>()
                         .eq(RefundOrder::getId, refundId)
@@ -160,11 +154,16 @@ public class RefundServiceImpl implements RefundService {
                         .set(RefundOrder::getStatus, 20)
                         .set(RefundOrder::getReviewerId, admin.getUserId())
                         .set(RefundOrder::getReviewTime, LocalDateTime.now())
-                        .set(RefundOrder::getReviewRemark, refund.getReviewRemark())
+                        .set(RefundOrder::getReviewRemark, remark != null ? remark.trim() : "审核通过，退款已执行")
         );
         if (affected != 1) {
             throw new BusinessException("退款申请状态已变化，审核失败");
         }
+
+        // 条件更新成功后，再执行真正退款（复用 PaymentService 成熟逻辑）
+        // 整个方法 @Transactional，如果 refundOrder 失败（订单/支付/库存异常），事务回滚，refund_order 状态也会回退到 10
+        // 保证只有一个审核人能成功抢占并执行退款
+        paymentService.refundOrder(admin, refund.getOrderId());
 
         log.info("退款申请审核通过，refundId={}, orderId={}, reviewer={}", refundId, refund.getOrderId(), admin.getUserId());
     }

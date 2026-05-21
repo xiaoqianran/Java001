@@ -15,7 +15,7 @@ public interface RefundService {
      * 买家提交退款申请
      *
      * @param buyer   当前登录买家
-     * @param orderId 目标订单（必须是自己的 + status=20 + 无待审申请）
+     * @param orderId 目标订单（必须是自己的 + status=20 + 无任何退款申请，本阶段一单一申请）
      * @param dto     包含退款原因
      * @return 创建的申请记录 ID
      */

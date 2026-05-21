@@ -20,10 +20,10 @@ public interface PaymentService {
     void handleMockCallback(MockPaymentCallbackDTO dto);
 
     /**
-     * 退款已支付订单（Phase 10）
+     * 退款已支付订单（Phase 10 历史接口，Phase 11 仅 ADMIN/SELLER 或内部审核流程调用）
      *
      * 规则：
-     * - 必须登录，BUYER 只能退自己的，ADMIN 可退任意，SELLER 可退
+     * - 仅 ADMIN(1)/SELLER(2) 或 RefundService.approveRefund 内部调用，BUYER 不可直接调用
      * - 仅订单 status=20 + payment_order status=20 可退
      * - 退款后 order 20→60，payment 20→40，恢复库存
      * - 使用条件更新防并发

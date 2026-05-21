@@ -183,7 +183,7 @@ public class PaymentServiceImpl implements PaymentService {
         }
     }
 
-    // ==================== Phase 10: 模拟退款（20 → 60，已支付未发货订单）====================
+    // ==================== Phase 10: 模拟退款（20 → 60，已支付未发货订单，Phase 11 限制仅 ADMIN/SELLER 或内部调用）====================
 
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -195,21 +195,20 @@ public class PaymentServiceImpl implements PaymentService {
         int role = operator.getRole();
         Long currentUserId = operator.getUserId();
 
+        // Phase 11：禁止 BUYER 绕过审核直接退款（必须先走申请+审核流程）
+        if (role == 3) {  // BUYER
+            throw new BusinessException(403, "买家请先提交退款申请，不能直接退款");
+        }
+        if (role != 1 && role != 2) {
+            throw new BusinessException(403, "无权操作退款");
+        }
+        // ADMIN(1) 和 SELLER(2) 通过
+
         // 1. 查询订单
         Order order = orderMapper.selectById(orderId);
         if (order == null) {
             throw new BusinessException(403, "订单不存在或无权操作");
         }
-
-        // 权限校验：BUYER 只能退自己的，ADMIN/SELLER 可退任意
-        if (role == 3) {  // BUYER
-            if (!order.getUserId().equals(currentUserId)) {
-                throw new BusinessException(403, "只能退款自己的订单");
-            }
-        } else if (role != 1 && role != 2) {
-            throw new BusinessException(403, "无权操作退款");
-        }
-        // ADMIN(1) 和 SELLER(2) 通过
 
         // 2. 订单状态校验：仅 20 已支付可退款
         if (!OrderStatus.fromCode(order.getStatus()).canRefund()) {

@@ -1,7 +1,7 @@
 # demo029_mall API 接口文档（Phase 11 - 退款申请与审核流程）
 
 > **项目**：demo029_mall - 小型电商系统演进版（Phase 11：退款申请与审核流程）  
-> **当前版本**：Phase 1-10 基线 + Phase 11 开发中（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成 + 超时自动取消 + 支付回调幂等 + 模拟退款 + 退款申请审核）  
+> **当前版本**：Phase 1-11 已完成（用户认证 + 商品域 + 购物车 + 订单基础 + 状态机/取消 + 支付模拟 + 发货完成 + 超时自动取消 + 支付回调幂等 + 模拟退款 + 退款申请审核）  
 > **基础地址**：`http://localhost:8080`  
 > **认证方式**：JWT Bearer Token（Header: `Authorization: Bearer <token>`）
 
@@ -474,18 +474,18 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 }
 ```
 
-### 退款接口（Phase 10 新增）
+### 退款接口（Phase 10 新增，历史接口 / Phase 11 起不推荐，BUYER 不可直接调用）
 
 `POST /api/payment/refund/{orderId}`
 
 **业务规则**：
 - 必须登录
-- BUYER 只能退自己的已支付订单，ADMIN 可退任意，SELLER 可退
+- **仅 ADMIN(1)/SELLER(2) 或内部审核流程可调用**，BUYER 不可直接退款（Phase 11 要求先提交申请 + 审核）
 - 仅 status=20 已支付 + payment_order status=20 可退款
 - 成功后 order 20→60，payment 20→40，恢复库存
 - 条件更新 + 同一事务保证并发安全
 
-**请求**：`POST /api/payment/refund/123`（带 Token）
+**请求**：`POST /api/payment/refund/123`（带 Token，仅限有审核权限的角色）
 
 **响应**：Result.success("退款成功", null)
 
@@ -514,7 +514,7 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 
 `POST /api/refund/apply/{orderId}`
 
-**说明**：买家对「已支付未发货」(20) 的自己的订单发起退款申请，附原因。仅创建申请记录，不立即退款。
+**说明**：买家对「已支付未发货」(20) 的自己的订单发起退款申请，附原因。仅创建申请记录，不立即退款。同一订单本阶段只允许一条退款申请（含拒绝后不可重复）。
 
 **请求 Body**:
 ```json
@@ -552,14 +552,18 @@ curl -X PUT http://localhost:8080/api/order/42/pay \
 - 仅更新申请 status=30，不改变订单状态
 
 **业务规则**：
-- 同一订单在有 status=10 申请时不可重复申请
+- BUYER：只能申请和查看自己的退款申请（POST /apply、GET /my）
+- ADMIN/SELLER：可以查看待审列表（GET /）、通过/拒绝任意待审申请
+- 同一订单本阶段只能有一条退款申请记录（无论 10/20/30，拒绝后也不再重复申请）
+- 审核通过会触发真实退款：order 20→60，payment 20→40，恢复库存
+- 拒绝只改 refund_order.status=30，不改订单和库存
 - 申请与真正退款执行分离（审核通过才触发）
-- 完全复用 Phase 10 的并发安全退款逻辑
+- 完全复用 Phase 10 的并发安全退款逻辑 + 条件更新抢占
 
 完整设计见 [Phase11.md](./Phase11.md)。
 
 ---
 
 **文档生成时间**：2026-05-19  
-**验证状态**：demo029_mall Phase 10 基线完整继承，Phase 11 退款申请与审核流程开发中，mvn package 通过，文档持续更新中。
+**验证状态**：demo029_mall Phase 11 退款申请与审核流程已完成，mvn package 通过，文档已自洽。
 本阶段新增 refund_order 表 + 申请/审核工作流：买家申请 → 管理员审核通过后执行退款（复用 Phase 10 核心逻辑 + 事务一致性）。

@@ -1,6 +1,6 @@
 # demo029_mall Phase 11 演进记录 —— 退款申请与审核流程
 
-> **前置**：demo028_mall 已完成 Phase 10 模拟退款流程（直接退款 POST /api/payment/refund/{orderId}）。
+> **前置**：前一版本已完成 Phase 10 模拟退款流程（直接退款 POST /api/payment/refund/{orderId}）。
 > **本阶段目标**：引入退款申请（refund_order）与审核工作流，实现「买家申请 → 管理员审核 → 通过后执行退款」的完整流程。强调申请与执行分离、审批流、并发防护（同一订单不可重复申请）、权限边界。
 > 严格限制（本阶段）：全额退款 + 仅支持已支付未发货(20)订单申请；拒绝部分退款、已发货退款、多次退款；不接真实支付渠道退款 API。
 
@@ -92,7 +92,7 @@ CREATE TABLE `refund_order` (
 
 ## 5. 实现步骤（本阶段拆分提交计划）
 
-1. chore: 初始化 demo029_mall（基于 demo028_mall Phase 10 拷贝 + 文档基线）
+1. chore: 初始化 demo029_mall（基于前一版本 Phase 10 拷贝 + 文档基线）
 2. feat: 新增 refund_order 表到 sql/init.sql + 演示数据
 3. feat: 新增 RefundOrder 实体、RefundOrderMapper
 4. feat: 新增 RefundService + RefundServiceImpl（申请、列表、审核核心）
@@ -132,4 +132,4 @@ CREATE TABLE `refund_order` (
 
 ---
 
-*Phase 11 开发进行中...*
+*Phase 11 已完成，mvn package 通过，文档自洽。*

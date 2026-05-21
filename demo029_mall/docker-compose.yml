@@ -1,0 +1,71 @@
+# ============================================================
+# demo029_mall - 小型电商系统 Docker Compose（基础设施）
+# ============================================================
+# 这是 demo029_mall（继承前一版本 Phase 10 基线）及后续演进版本的基础设施。
+# 启动：
+#   docker compose up -d
+#
+# 停止：
+#   docker compose down
+#
+# MySQL: localhost:3307   (root/123456 / mall_db)
+# Redis: localhost:6380   (password: 123456)
+# ============================================================
+
+version: '3.8'
+
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mall-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: mall_db
+      TZ: Asia/Shanghai
+    ports:
+      - "3307:3306"
+    volumes:
+      - mall_mysql_data:/var/lib/mysql
+      - ./sql/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mall-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: mall-redis
+    restart: always
+    ports:
+      - "6380:6379"
+    volumes:
+      - mall_redis_data:/data
+    command: >
+      redis-server
+      --appendonly yes
+      --requirepass 123456
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "123456", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - mall-net
+
+volumes:
+  mall_mysql_data:
+    driver: local
+  mall_redis_data:
+    driver: local
+
+networks:
+  mall-net:
+    driver: bridge
